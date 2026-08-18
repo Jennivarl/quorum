@@ -1,0 +1,12 @@
+ARCHIVED SOURCE
+publisher: Wikidata, structured population claims
+original-url: https://www.wikidata.org/wiki/Special:EntityData/Q8673.json
+retrieved: 2026-08-18T01:45:28Z
+capture: plain text from the page above, excerpted around the
+         population figures rather than from the top of the page,
+         because site navigation would otherwise fill the excerpt.
+         Frozen so the demo stays reproducible; follow original-url
+         to compare against what the publisher says today.
+--------------------------------------------------------------------
+
+Wikidata population claims for Lagos: population 15070000 as of 2022-03-21; population 8048430 as of 2006-00-00; population 13903620 as of 2019-00-00; population 10441182 as of 2010-00-00; population 7280706 as of 2000-00-00; population 4764093 as of 1990-00-00; population 2572218 as of 1980-00-00; population 1413528 as of 1970-00-00; population 762418 as of 1960-00-00; population 325218 as of 1950-00-00; population 126108 as of 1931-00-00; population 99690 as of 1921-00-00; population 73766 as of 1911-00-00

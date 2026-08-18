@@ -1,0 +1,36 @@
+{
+  "claim": "What is the population of Lagos, Nigeria?",
+  "retrieved": "2026-08-18T01:45:28Z",
+  "sources": [
+    {
+      "name": "wikipedia",
+      "url": "https://en.wikipedia.org/api/rest_v1/page/summary/Lagos",
+      "publisher": "Wikipedia (English), article summary",
+      "chars": 2191
+    },
+    {
+      "name": "citypopulation",
+      "url": "https://www.citypopulation.de/en/nigeria/admin/NGA025__lagos/",
+      "publisher": "citypopulation.de, census and projection tables",
+      "chars": 2544
+    },
+    {
+      "name": "worldpopulationreview",
+      "url": "https://worldpopulationreview.com/cities/nigeria/lagos",
+      "publisher": "World Population Review",
+      "chars": 2707
+    },
+    {
+      "name": "britannica",
+      "url": "https://www.britannica.com/place/Lagos-Nigeria",
+      "publisher": "Encyclopaedia Britannica",
+      "chars": 5200
+    },
+    {
+      "name": "wikidata",
+      "url": "https://www.wikidata.org/wiki/Special:EntityData/Q8673.json",
+      "publisher": "Wikidata, structured population claims",
+      "chars": 513
+    }
+  ]
+}
