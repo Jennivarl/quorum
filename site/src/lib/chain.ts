@@ -125,12 +125,15 @@ export async function loadReferenceCheck(): Promise<Loaded<ReferenceRecord>> {
   try {
     const id = await featuredId(cached.check_id);
     const live = await readCheck(id);
-    cached.check_id = id;
+    // Do not write the live id back onto `cached`: it is the module-level
+    // fallback and other pages read it. Overwriting it would make a later
+    // fallback claim to be a check that is not in the file.
     const byUrl = new Map(cached.answers.map((a) => [a.url, a]));
     return {
       data: {
         ...cached,
         ...live,
+        check_id: id,
         answers: live.answers.map((a) => ({
           ...a,
           publisher: byUrl.get(a.url)?.publisher,
