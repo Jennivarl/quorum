@@ -1,0 +1,91 @@
+.masthead {
+  border-bottom: 1px solid var(--rule);
+  background: var(--ground);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.masthead-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-m);
+  min-height: 4.5rem;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9375rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.masthead nav {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+}
+
+.masthead nav a {
+  font-size: var(--step-0);
+  color: var(--ink-soft);
+  padding-bottom: 2px;
+  border-bottom: 1px solid transparent;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+
+/* Hover and current are ink, never the accent. Blue means a source
+   disagreed, and nothing else in this stylesheet is allowed to borrow it. */
+.masthead nav a:hover {
+  color: var(--ink);
+}
+
+.masthead nav a[aria-current="page"] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.site-foot {
+  border-top: 1px solid var(--rule);
+  padding: 2rem 0 3rem;
+}
+
+.site-foot-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  align-items: baseline;
+}
+
+.foot-link {
+  transition: color 140ms ease;
+}
+
+.foot-link:hover {
+  color: var(--ink);
+}
+
+.source-badge {
+  display: inline-block;
+}
+
+@media (max-width: 720px) {
+  .masthead {
+    position: static;
+  }
+  .masthead-inner {
+    min-height: 0;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .masthead nav {
+    gap: 1.25rem;
+    flex-wrap: wrap;
+  }
+}

@@ -5,3 +5,6 @@ node_modules/
 .env
 *.egg-info/
 artifacts/
+
+# site build output
+site/dist/

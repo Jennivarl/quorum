@@ -1,0 +1,67 @@
+{
+  "note": "The real record stored on Bradbury, read back from the contract on 2026-08-19. Committed so the page renders correctly when the RPC is unreachable, which on a testnet is often. The site reads the chain first and falls back to this.",
+  "check_id": "lagos-population",
+  "contract": "0xa6BbF862781407Bd95E434BA7eF44e0c77bD120b",
+  "run_at": "2026-08-19",
+  "claim": "What is the population of Lagos, Nigeria?",
+  "verdict": "contested",
+  "consensus_value": "13,491,800",
+  "agreement_percent": 40,
+  "sources_answered": 5,
+  "sources_dissenting": 3,
+  "sources_silent": 0,
+  "settled_by": "arithmetic",
+  "checked_by": "0xAdDf20fe0e1E86CD6b4032807028356317bE8345",
+  "answers": [
+    {
+      "url": "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/wikipedia.txt",
+      "publisher": "Wikipedia",
+      "origin": "https://en.wikipedia.org/api/rest_v1/page/summary/Lagos",
+      "retrieved": "2026-08-18T01:45:28Z",
+      "status": "found",
+      "answer": "between 17 and 21 million",
+      "quote": "As of November 2025, the size of the city's population has been estimated to be between 17 and 21 million residents, making Lagos the largest city in Nigeria, the most populous urban area on the African continent, and one of the fastest-gro"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/citypopulation.txt",
+      "publisher": "citypopulation.de",
+      "origin": "https://www.citypopulation.de/en/nigeria/admin/NGA025__lagos/",
+      "retrieved": "2026-08-18T01:45:28Z",
+      "status": "found",
+      "answer": "13,491,800",
+      "quote": "Lagos State 5,725,116 9,113,605 13,491,800"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/worldpopulationreview.txt",
+      "publisher": "World Population Review",
+      "origin": "https://worldpopulationreview.com/cities/nigeria/lagos",
+      "retrieved": "2026-08-18T01:45:28Z",
+      "status": "found",
+      "answer": "14,881,845",
+      "quote": "Lagos's 2026 population is now estimated at 14,881,845."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/britannica.txt",
+      "publisher": "Encyclopaedia Britannica",
+      "origin": "https://www.britannica.com/place/Lagos-Nigeria",
+      "retrieved": "2026-08-18T01:45:28Z",
+      "status": "found",
+      "answer": "13,745,000",
+      "quote": "Recent estimates show the urban agglomeration to be 13,745,000."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/wikidata.txt",
+      "publisher": "Wikidata",
+      "origin": "https://www.wikidata.org/wiki/Special:EntityData/Q8673.json",
+      "retrieved": "2026-08-18T01:45:28Z",
+      "status": "found",
+      "answer": "15070000",
+      "quote": "population 15070000 as of 2022-03-21"
+    }
+  ],
+  "dissenting": [
+    "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/wikidata.txt",
+    "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/wikipedia.txt",
+    "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/worldpopulationreview.txt"
+  ]
+}
