@@ -26,18 +26,29 @@ deciding whether to pay out on a value knows which one it is holding.
 
 ## What a check returns
 
+This is the real record stored on Bradbury under the id
+`lagos-population`, not an illustration. Read it back yourself with the
+command in [Deployment](#deployment).
+
 ```
 verdict:    contested
 value:      13,491,800
 agreement:  40%
+settled by: arithmetic
 
 agreeing    citypopulation          13,491,800
             britannica              13,745,000
 
-dissenting  wikipedia               17-21 million
+dissenting  wikipedia               between 17 and 21 million
             worldpopulationreview   14,881,845
-            wikidata                15,070,000
+            wikidata                15070000
 ```
+
+Two sources put Lagos State near 13.5 million on the 2022 projection.
+Three measure the metropolitan area instead and land between 14.9 and 21
+million. That is a documented methodological dispute rather than an
+error, and it is exactly what a single-source oracle would have hidden
+behind one confident number.
 
 Four verdicts:
 
@@ -147,6 +158,37 @@ reason unrelated to the question asked.
 retrieval time. They are frozen so the reference check stays reproducible
 for anyone reading this months from now, and the original URLs are there
 to audit against.
+
+The reference check fetches them from `raw.githubusercontent.com` at a
+pinned commit SHA rather than at `main`. A branch URL moves when the
+branch does, which would reintroduce exactly the drift the freezing was
+meant to remove. A commit URL cannot change.
+
+---
+
+## Deployment
+
+| Contract | Network | Address |
+|---|---|---|
+| `Quorum` | Bradbury | [`0xa6BbF862781407Bd95E434BA7eF44e0c77bD120b`](https://explorer-bradbury.genlayer.com/address/0xa6BbF862781407Bd95E434BA7eF44e0c77bD120b) |
+
+The reference check is stored under the id `lagos-population`. Read it
+back without spending anything:
+
+```bash
+genlayer call 0xa6BbF862781407Bd95E434BA7eF44e0c77bD120b get_check \
+  --args lagos-population \
+  --rpc https://rpc-bradbury.genlayer.com
+```
+
+A write costs one fetch and one prompt per source on every validator, so
+a five-source check is thirty model calls before consensus.
+
+Expect the client to give up before the chain does. Both runs of the
+reference check reported `LEADER_TIMEOUT`, and the second one had
+nevertheless been written by the time the status was read back. Check
+`is_checked` before assuming a timeout means failure. A genuinely failed
+attempt writes no state, so retrying is safe either way.
 
 ---
 
