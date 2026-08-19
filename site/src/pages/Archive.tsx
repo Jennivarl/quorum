@@ -138,6 +138,8 @@ export default function Archive() {
 
       {state.phase === "ready" && rows.length > 0 && (
         <>
+          <SameClaimNote rows={rows} />
+
           <nav className="filters" aria-label="Filter by verdict">
             {FILTERS.filter(([key]) => key === "all" || counts[key] > 0).map(
               ([key, label]) => (
@@ -176,6 +178,53 @@ export default function Archive() {
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * When the same claim has been checked more than once against different
+ * sources and come back differently, say so.
+ *
+ * This is the strongest thing the archive can show, and it only appears when
+ * the data actually supports it. The verdict is a property of the sources you
+ * chose as much as of the world, and an oracle that returns one number can
+ * never tell you that.
+ */
+function SameClaimNote({ rows }: { rows: Summary[] }) {
+  const byClaim = new Map<string, Summary[]>();
+  for (const r of rows) {
+    byClaim.set(r.claim, [...(byClaim.get(r.claim) ?? []), r]);
+  }
+
+  const split = [...byClaim.values()].find(
+    (group) =>
+      group.length > 1 && new Set(group.map((g) => g.verdict)).size > 1,
+  );
+  if (!split) return null;
+
+  const verdicts = [...new Set(split.map((s) => s.verdict))];
+
+  return (
+    <aside className="same-claim">
+      <span className="label">Worth noticing</span>
+      <p className="reading">
+        One claim below has been checked {split.length} times against
+        different sources, and come back{" "}
+        {verdicts.map((v, i) => (
+          <span key={v}>
+            {i > 0 && (i === verdicts.length - 1 ? " and " : ", ")}
+            <span className={`value v-${v}`}>{v.replace("_", " ")}</span>
+          </span>
+        ))}
+        .
+      </p>
+      <p className="soft same-claim-note">
+        Not a bug. The verdict is a property of which sources you asked as
+        much as of the world, and that is the argument: an oracle that hands
+        back one number cannot tell you it depended on the two pages it
+        happened to read.
+      </p>
+    </aside>
   );
 }
 

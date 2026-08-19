@@ -57,7 +57,7 @@ export default function Home() {
         </h1>
         <p className="hero-lede">
           Most oracles read one page and hand back a number. This one reads
-          five, and tells you that three of them said something else.
+          several, and tells you which of them said something else.
         </p>
         <div className="hero-links">
           <a className="textlink" href="#/run">
@@ -196,8 +196,11 @@ function ProofPanel({
         <span className="label">What a single-source oracle returns</span>
         <p className="value counterpoint-value">{record.consensus_value}</p>
         <p className="soft counterpoint-note">
-          No caveat, no spread, no sign that {counts.dissented} other sources
-          put it higher. Same fetch, same model, one URL.
+          {counts.dissented > 0
+            ? `No caveat, no spread, no sign that ${counts.dissented} other ${
+                counts.dissented === 1 ? "source" : "sources"
+              } said something different. Same fetch, same model, one URL.`
+            : "Here it would have been right. The point is that you could not have known that without reading the others."}
         </p>
       </div>
     </section>
