@@ -90,6 +90,11 @@ class CheckRecord:
 
 class Quorum(gl.Contract):
     checks: TreeMap[str, CheckRecord]
+    # A TreeMap cannot be walked from outside the contract, so an archive of
+    # past checks would be unreadable without keeping the keys in order as
+    # well. Insertion order is the useful order here: it is the order the
+    # checks were actually settled in.
+    ids: DynArray[str]
 
     def __init__(self):
         pass
@@ -229,6 +234,7 @@ class Quorum(gl.Contract):
             checked_by=gl.message.sender_address,
         )
         self.checks[key] = record
+        self.ids.append(key)
         return _as_dict(record)
 
     def _reconcile(self, claim: str, found: list) -> tuple:
@@ -284,6 +290,43 @@ class Quorum(gl.Contract):
     @gl.public.view
     def is_checked(self, check_id: str) -> bool:
         return check_id.strip().lower() in self.checks
+
+    @gl.public.view
+    def check_ids(self) -> list:
+        """Every check this contract has settled, oldest first."""
+        return [cid for cid in self.ids]
+
+    @gl.public.view
+    def count(self) -> int:
+        return len(self.ids)
+
+    @gl.public.view
+    def summaries(self) -> list:
+        """
+        Enough of every check to render an index, in one call.
+
+        Reading the archive as one call per id would be N round trips to
+        list N rows, and the quotes and per-source answers are most of the
+        payload while being none of what an index shows. This returns the
+        verdict line only; the full record is one `get_check` away.
+        """
+        out = []
+        for cid in self.ids:
+            record = self.checks[cid]
+            out.append(
+                {
+                    "check_id": cid,
+                    "claim": record.claim,
+                    "verdict": record.verdict,
+                    "consensus_value": record.consensus_value,
+                    "agreement_percent": record.agreement_percent,
+                    "sources_answered": record.sources_answered,
+                    "sources_dissenting": record.sources_dissenting,
+                    "sources_silent": record.sources_silent,
+                    "settled_by": record.settled_by,
+                }
+            )
+        return out
 
 
 def _as_dict(record: CheckRecord) -> dict:

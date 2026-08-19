@@ -1,0 +1,165 @@
+.archive {
+  padding-top: 5rem;
+}
+
+.archive-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-s);
+}
+
+.archive-title {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  max-width: 18ch;
+}
+
+.archive-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+}
+
+.archive-tally {
+  font-size: var(--step-1);
+  color: var(--ink-soft);
+}
+
+.archive-skeleton {
+  height: 18rem;
+  border: 1px dashed var(--rule);
+  margin-top: 1rem;
+}
+
+/* ---------- filters ---------- */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.filter {
+  color: var(--ink-faint);
+  padding-bottom: 3px;
+  border-bottom: 1px solid transparent;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+
+.filter:hover {
+  color: var(--ink);
+}
+
+.filter.is-on {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.filter-n {
+  color: var(--ink-faint);
+}
+
+/* ---------- ledger ---------- */
+
+.ledger {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.ledger thead th {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 400;
+  padding: 0 1.5rem 0.625rem 0;
+  border-bottom: 1.5px solid var(--ink);
+}
+
+.ledger td {
+  padding: 1.125rem 1.5rem 1.125rem 0;
+  border-bottom: 1px solid var(--rule-faint);
+  vertical-align: middle;
+}
+
+.ledger .num {
+  text-align: right;
+  padding-right: 0;
+}
+
+.ledger-row {
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+
+/* Hover is a surface lift, never a colour change. Blue is reserved. */
+.ledger-row:hover {
+  background: var(--surface);
+}
+
+.ledger-claim {
+  display: block;
+  font-family: var(--serif);
+  font-size: var(--step-1u);
+  line-height: 1.35;
+  max-width: 46ch;
+}
+
+.ledger-row:hover .ledger-claim {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.ledger-id {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.ledger-verdict {
+  font-size: var(--step-1);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.v-contested {
+  color: var(--dissent);
+}
+.v-corroborated,
+.v-majority {
+  color: var(--ink);
+}
+.v-no_data {
+  color: var(--ink-faint);
+}
+
+@media (max-width: 700px) {
+  .archive {
+    padding-top: 3rem;
+  }
+  .ledger thead {
+    display: none;
+  }
+  .ledger,
+  .ledger tbody,
+  .ledger tr,
+  .ledger td {
+    display: block;
+    width: 100%;
+  }
+  .ledger-row {
+    border-bottom: 1px solid var(--rule);
+    padding: 1rem 0;
+  }
+  .ledger td {
+    border: 0;
+    padding: 0.2rem 0;
+  }
+  .ledger .num {
+    text-align: left;
+  }
+}

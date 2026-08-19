@@ -1,0 +1,236 @@
+.run {
+  padding-top: 5rem;
+  max-width: 56rem;
+}
+
+.run-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-s);
+}
+
+.run-title {
+  font-size: clamp(1.875rem, 4.6vw, 2.75rem);
+  max-width: 20ch;
+}
+
+/* ---------- form ---------- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-l);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+/* The claim is set in the serif at reading size, because it is the claim,
+   not interface. No box around it, just a rule, like a line on a form. */
+.claim-input {
+  font-family: var(--serif);
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  line-height: 1.3;
+  background: transparent;
+  border: 0;
+  border-bottom: 1.5px solid var(--ink);
+  padding: 0.5rem 0;
+  width: 100%;
+}
+
+.claim-input::placeholder {
+  color: var(--ink-faint);
+  opacity: 1;
+}
+
+.id-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.id-input {
+  font-size: var(--step-1u);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  padding: 0.4rem 0;
+  min-width: 18rem;
+  flex: 1;
+}
+
+.id-input:focus {
+  border-bottom-color: var(--ink);
+}
+
+.taken {
+  color: var(--ink);
+}
+
+/* ---------- sources ---------- */
+
+.sources-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.source-rows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--rule);
+}
+
+.source-row {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 5rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--rule-faint);
+}
+
+.source-n {
+  color: var(--ink-faint);
+}
+
+.source-input {
+  font-size: var(--step-1);
+  background: transparent;
+  border: 0;
+  padding: 0.4rem 0;
+  width: 100%;
+}
+
+.row-remove {
+  text-align: right;
+  color: var(--ink-faint);
+  transition: color 140ms ease;
+}
+
+.row-remove:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.row-remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.source-actions {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.textbtn {
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 2px;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+
+.textbtn:hover:not(:disabled) {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.textbtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Problems are ink, not red and not blue. Red would be a second semantic
+   colour competing with dissent, and blue is spoken for. */
+.problem {
+  font-size: var(--step-1);
+  color: var(--ink);
+  border-left: 1.5px solid var(--ink);
+  padding-left: 0.75rem;
+  max-width: 60ch;
+}
+
+.note {
+  font-size: var(--step-0);
+  max-width: 62ch;
+  border-left: 1px solid var(--rule);
+  padding-left: 1.25rem;
+}
+
+/* ---------- runner ---------- */
+
+.runner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-m);
+}
+
+.cmd-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.cmd-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.cmd-block pre {
+  margin: 0;
+  background: var(--sunk);
+  padding: 1.25rem;
+  overflow-x: auto;
+  font-size: var(--step-1);
+  line-height: 1.65;
+  white-space: pre;
+}
+
+.cmd-block.is-incomplete pre {
+  color: var(--ink-faint);
+}
+
+.expectations {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem;
+}
+
+.expectations > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 0.875rem;
+}
+
+.expectations p {
+  font-size: var(--step-1);
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .run {
+    padding-top: 3rem;
+  }
+  .expectations {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+  .source-row {
+    grid-template-columns: 1.75rem minmax(0, 1fr) 4.5rem;
+    gap: 0.5rem;
+  }
+  .id-input {
+    min-width: 0;
+  }
+}

@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Header, Footer } from "./components/Chrome";
 import Home from "./pages/Home";
+import RunCheck from "./pages/RunCheck";
+import Result from "./pages/Result";
+import Archive from "./pages/Archive";
+import Method from "./pages/Method";
 
 /**
  * Hash routing, deliberately.
@@ -12,7 +16,8 @@ import Home from "./pages/Home";
  */
 function currentRoute(): string {
   const raw = window.location.hash.replace(/^#/, "");
-  return raw === "" || raw === "/" ? "/" : raw.replace(/\/+$/, "");
+  if (raw === "" || raw === "/") return "/";
+  return raw.replace(/\/+$/, "");
 }
 
 export default function App() {
@@ -38,24 +43,31 @@ export default function App() {
 
 function render(route: string) {
   if (route === "/") return <Home />;
-  return <NotBuiltYet route={route} />;
+  if (route === "/run") return <RunCheck />;
+  if (route === "/archive") return <Archive />;
+  if (route === "/method") return <Method />;
+
+  const check = route.match(/^\/check\/(.+)$/);
+  if (check) return <Result checkId={decodeURIComponent(check[1])} />;
+
+  return <NotFound route={route} />;
 }
 
-function NotBuiltYet({ route }: { route: string }) {
+function NotFound({ route }: { route: string }) {
   return (
-    <div className="shell page-body" style={{ paddingTop: "6rem" }}>
+    <div className="shell page-body" style={{ paddingTop: "5rem" }}>
       <div className="stack" style={{ gap: "1rem" }}>
-        <span className="label">Not built yet</span>
+        <span className="label">No such page</span>
         <h1 className="claim" style={{ fontSize: "var(--step-4)" }}>
-          This page is still being written.
+          Nothing lives at this address.
         </h1>
         <p className="reading soft">
-          The route <span className="value">{route}</span> is planned but not
-          finished. The home page and the reference check are live.
+          The route <span className="value">{route}</span> does not exist. A
+          check is at <span className="value">#/check/its-id</span>.
         </p>
-        <p>
-          <a className="textlink" href="#/">
-            Back to the home page
+        <p style={{ marginTop: "0.5rem" }}>
+          <a className="textlink" href="#/archive">
+            See every check on the contract
           </a>
         </p>
       </div>

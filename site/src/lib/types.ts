@@ -37,6 +37,23 @@ export interface ReferenceRecord extends CheckRecord {
 }
 
 /**
+ * What the archive needs, which is deliberately not the whole record. The
+ * quotes and per-source answers are most of the payload and none of what an
+ * index shows.
+ */
+export interface Summary {
+  check_id: string;
+  claim: string;
+  verdict: Verdict;
+  consensus_value: string;
+  agreement_percent: number;
+  sources_answered: number;
+  sources_dissenting: number;
+  sources_silent: number;
+  settled_by: string;
+}
+
+/**
  * The contract stores who dissented, not who agreed, because dissent is the
  * output that matters and the rest is derivable. Derive it here rather than
  * asking the chain for something it deliberately does not keep.

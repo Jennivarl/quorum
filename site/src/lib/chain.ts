@@ -1,6 +1,6 @@
 import { createClient, createAccount } from "genlayer-js";
 import { testnetBradbury } from "genlayer-js/chains";
-import type { CheckRecord, ReferenceRecord } from "./types";
+import type { CheckRecord, ReferenceRecord, Summary } from "./types";
 
 export const CONTRACT = "0xa6BbF862781407Bd95E434BA7eF44e0c77bD120b";
 export const RPC = "https://rpc-bradbury.genlayer.com";
@@ -49,6 +49,27 @@ export async function isChecked(checkId: string): Promise<boolean> {
     args: [checkId],
   });
   return Boolean(result);
+}
+
+/** Every check the contract holds, in one call, without the quotes. */
+export async function readSummaries(): Promise<Summary[]> {
+  const c = client();
+  const result = await c.readContract({
+    address: CONTRACT as `0x${string}`,
+    functionName: "summaries",
+    args: [],
+  });
+  return (result ?? []) as unknown as Summary[];
+}
+
+export async function readCheckIds(): Promise<string[]> {
+  const c = client();
+  const result = await c.readContract({
+    address: CONTRACT as `0x${string}`,
+    functionName: "check_ids",
+    args: [],
+  });
+  return (result ?? []) as unknown as string[];
 }
 
 let cachedReference: ReferenceRecord | null = null;
