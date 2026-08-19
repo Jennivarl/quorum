@@ -1,7 +1,7 @@
 {
-  "note": "The real record stored on Bradbury, read back from the contract on 2026-08-19. Committed so the page renders correctly when the RPC is unreachable, which on a testnet is often. The site reads the chain first and falls back to this.",
+  "note": "Real output from a real run of this contract against the five archived sources on 2026-08-19. The transaction did not finalise on Bradbury, so this record is not currently readable from the chain. It is committed here so the site renders the genuine result, and the page states on screen whether it is showing chain data or this copy. Reproducible from fixtures/ and asserted by the test suite.",
   "check_id": "lagos-population",
-  "contract": "0xa6BbF862781407Bd95E434BA7eF44e0c77bD120b",
+  "contract": "0x28Fc13A5864549c2e22ccBd6c85426De12614E55",
   "run_at": "2026-08-19",
   "claim": "What is the population of Lagos, Nigeria?",
   "verdict": "contested",
@@ -63,5 +63,6 @@
     "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/wikidata.txt",
     "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/wikipedia.txt",
     "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/worldpopulationreview.txt"
-  ]
+  ],
+  "finalised": false
 }

@@ -2,7 +2,7 @@ import { createClient, createAccount } from "genlayer-js";
 import { testnetBradbury } from "genlayer-js/chains";
 import type { CheckRecord, ReferenceRecord, Summary } from "./types";
 
-export const CONTRACT = "0xa6BbF862781407Bd95E434BA7eF44e0c77bD120b";
+export const CONTRACT = "0x28Fc13A5864549c2e22ccBd6c85426De12614E55";
 export const RPC = "https://rpc-bradbury.genlayer.com";
 export const EXPLORER = `https://explorer-bradbury.genlayer.com/address/${CONTRACT}`;
 

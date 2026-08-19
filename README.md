@@ -26,9 +26,9 @@ deciding whether to pay out on a value knows which one it is holding.
 
 ## What a check returns
 
-This is the real record stored on Bradbury under the id
-`lagos-population`, not an illustration. Read it back yourself with the
-command in [Deployment](#deployment).
+This is real output from a real run against the five archived sources,
+reproducible from `fixtures/` and asserted by the test suite. It is not
+currently readable from the chain: see [Deployment](#deployment) for why.
 
 ```
 verdict:    contested
@@ -122,7 +122,8 @@ contracts/quorum.py      the contract
 contracts/quorum_bundle.py  generated, this is what deploys
 deploy/build_bundle.py   inlines the modules into one file
 fixtures/                archived sources for the reference check
-test/                    41 tests
+site/                    the frontend, Vite and React, GitHub Pages
+test/                    69 tests
 ```
 
 GenVM deploys a single file with no access to sibling modules, so the
@@ -138,7 +139,16 @@ check(check_id: str, claim: str, sources: list) -> dict   # write
 get_check(check_id: str) -> dict                          # view
 verdict_of(check_id: str) -> str                          # view
 is_checked(check_id: str) -> bool                         # view
+check_ids() -> list                                       # view
+summaries() -> list                                       # view
+count() -> int                                            # view
 ```
+
+A `TreeMap` cannot be walked from outside the contract, so the keys are
+kept in a `DynArray` as well. Without that an archive of past checks is
+unreadable, and reading one by one would be N round trips to list N rows.
+`summaries` deliberately omits the quotes and per-source answers, which
+are most of the payload and none of what an index shows.
 
 Two sources minimum, eight maximum. One source is a quotation, not a
 corroboration. Each source costs a fetch and a prompt on every validator,
@@ -170,25 +180,45 @@ meant to remove. A commit URL cannot change.
 
 | Contract | Network | Address |
 |---|---|---|
-| `Quorum` | Bradbury | [`0xa6BbF862781407Bd95E434BA7eF44e0c77bD120b`](https://explorer-bradbury.genlayer.com/address/0xa6BbF862781407Bd95E434BA7eF44e0c77bD120b) |
+| `Quorum` | Bradbury | [`0x28Fc13A5864549c2e22ccBd6c85426De12614E55`](https://explorer-bradbury.genlayer.com/address/0x28Fc13A5864549c2e22ccBd6c85426De12614E55) |
 
-The reference check is stored under the id `lagos-population`. Read it
-back without spending anything:
+All seven view methods work and are free to call:
 
 ```bash
-genlayer call 0xa6BbF862781407Bd95E434BA7eF44e0c77bD120b get_check \
-  --args lagos-population \
+genlayer call 0x28Fc13A5864549c2e22ccBd6c85426De12614E55 count \
   --rpc https://rpc-bradbury.genlayer.com
 ```
 
-A write costs one fetch and one prompt per source on every validator, so
-a five-source check is thirty model calls before consensus.
+### No check has finalised yet, and that is worth being exact about
 
-Expect the client to give up before the chain does. Both runs of the
-reference check reported `LEADER_TIMEOUT`, and the second one had
-nevertheless been written by the time the status was read back. Check
-`is_checked` before assuming a timeout means failure. A genuinely failed
-attempt writes no state, so retrying is safe either way.
+A `check` write costs one fetch and one prompt per source, and every
+validator repeats the whole thing independently, so a five-source check
+is roughly thirty model calls inside one transaction.
+
+At time of writing Bradbury will not carry that. Five attempts across two
+deployments produced, in order: `LEADER_TIMEOUT`, `LEADER_TIMEOUT`, a
+transaction that sat at `Pending` and was later `Canceled`, another
+`Pending`, and finally `VALIDATORS_TIMEOUT` on a two-source check. Deploys
+and view calls go through immediately, and the account holds 99.9 GEN, so
+this is neither a funding problem nor a contract error.
+
+One attempt did execute correctly end to end. It returned the verdict,
+the agreement share and the correct three dissenters, matching what the
+local tests predict, and the record was briefly readable before the
+transaction failed to finalise and rolled back. The logic works; the
+network could not carry it to consensus.
+
+Two things follow, both of which are properties of the design rather
+than workarounds:
+
+- **A timeout is not proof of failure.** Read `is_checked` before
+  retrying. State can be briefly visible before it rolls back, so a
+  single successful read is not proof of success either.
+- **A failed attempt writes nothing.** Nothing partial is ever stored, so
+  retrying is always safe.
+
+The site reads the chain first and falls back to a committed copy of that
+run, and it says on screen which of the two you are looking at.
 
 ---
 
