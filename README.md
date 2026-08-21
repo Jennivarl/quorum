@@ -189,36 +189,61 @@ genlayer call 0x28Fc13A5864549c2e22ccBd6c85426De12614E55 count \
   --rpc https://rpc-bradbury.genlayer.com
 ```
 
-### No check has finalised yet, and that is worth being exact about
+### Checks stored on chain
+
+Two checks are stored and readable right now, both of the same claim
+against different pairs of sources:
+
+| id | verdict | agreement | sources |
+|---|---|---|---|
+| `lagos-pair` | contested | 50% | citypopulation, wikidata |
+| `lagos-metro-vs-state` | contested | 50% | wikipedia, citypopulation |
+
+```bash
+genlayer call 0x28Fc13A5864549c2e22ccBd6c85426De12614E55 summaries \
+  --rpc https://rpc-bradbury.genlayer.com
+```
+
+The five-source run shown at the top of this file produced the correct
+verdict and the correct three dissenters, and can be reproduced locally
+from `fixtures/`, but it has never survived to finalisation. See below.
+
+### What Bradbury will and will not carry
 
 A `check` write costs one fetch and one prompt per source, and every
-validator repeats the whole thing independently, so a five-source check
-is roughly thirty model calls inside one transaction.
+validator repeats the whole thing independently. A five-source check is
+therefore roughly thirty model calls inside a single transaction.
 
-At time of writing Bradbury will not carry that. Five attempts across two
-deployments produced, in order: `LEADER_TIMEOUT`, `LEADER_TIMEOUT`, a
-transaction that sat at `Pending` and was later `Canceled`, another
-`Pending`, and finally `VALIDATORS_TIMEOUT` on a two-source check. Deploys
-and view calls go through immediately, and the account holds 99.9 GEN, so
-this is neither a funding problem nor a contract error.
+Observed across a dozen attempts on two deployments:
 
-One attempt did execute correctly end to end. It returned the verdict,
-the agreement share and the correct three dissenters, matching what the
-local tests predict, and the record was briefly readable before the
-transaction failed to finalise and rolled back. The logic works; the
-network could not carry it to consensus.
+| sources | outcome |
+|---|---|
+| 2 | lands, roughly half the time |
+| 3 | `LEADER_TIMEOUT` every attempt |
+| 5 | `LEADER_TIMEOUT` or `VALIDATORS_TIMEOUT` every attempt |
 
-Two things follow, both of which are properties of the design rather
-than workarounds:
+Three properties of this are worth knowing before you debug something
+that is not broken.
 
-- **A timeout is not proof of failure.** Read `is_checked` before
-  retrying. State can be briefly visible before it rolls back, so a
-  single successful read is not proof of success either.
-- **A failed attempt writes nothing.** Nothing partial is ever stored, so
-  retrying is always safe.
+**A timeout is not proof of failure.** One run reported `LEADER_TIMEOUT`
+and had nevertheless been written by the time the status was read back.
 
-The site reads the chain first and falls back to a committed copy of that
-run, and it says on screen which of the two you are looking at.
+**A successful read is not proof of success.** The same run later rolled
+back to nothing, because the transaction never finalised. A separate
+check, `lagos-state-figures`, was readable for several minutes and then
+vanished the same way. Read twice, minutes apart, before believing state
+exists.
+
+**A failed attempt writes nothing at all.** Nothing partial is ever
+stored, so retrying is always safe.
+
+Separately, the network sometimes reverts every write at the consensus
+contract, including writes with fresh ids on freshly deployed contracts,
+while `eth_call` replaying the identical transaction against current
+state succeeds. That is validator assignment failing upstream, not a
+contract error, and the only remedy is to wait.
+
+Deploys and all seven view calls go through immediately throughout.
 
 ---
 
