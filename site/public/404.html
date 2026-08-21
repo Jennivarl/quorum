@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Not found | Quorum</title>
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      /* Standalone. GitHub Pages serves this file directly, so it cannot
+         rely on the app bundle or its stylesheet. Same tokens, inlined. */
+      :root {
+        --ground: #e9ebee;
+        --ink: #14161a;
+        --ink-soft: #5a616c;
+        --ink-faint: #8c93a0;
+        --rule: #cfd3da;
+        --dissent: #0a6e9c;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ground: #15171b;
+          --ink: #e6e8ec;
+          --ink-soft: #969da9;
+          --ink-faint: #666d79;
+          --rule: #2e333b;
+          --dissent: #4fc0ec;
+        }
+      }
+      :root[data-theme="dark"] {
+        --ground: #15171b;
+        --ink: #e6e8ec;
+        --ink-soft: #969da9;
+        --ink-faint: #666d79;
+        --rule: #2e333b;
+        --dissent: #4fc0ec;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--ground);
+        color: var(--ink);
+        font-family: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+      main {
+        max-width: 34rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      .label {
+        font-family: "Cascadia Mono", Consolas, Menlo, ui-monospace, monospace;
+        font-size: 0.6875rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+      }
+      h1 {
+        font-family: Literata, Georgia, serif;
+        font-weight: 400;
+        font-size: clamp(1.75rem, 5vw, 2.75rem);
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        margin: 0;
+      }
+      p {
+        margin: 0;
+        font-family: Literata, Georgia, serif;
+        font-size: 1.0625rem;
+        line-height: 1.6;
+        color: var(--ink-soft);
+      }
+      .marks { display: flex; gap: 6px; }
+      a {
+        color: var(--ink);
+        text-decoration: none;
+        font-size: 0.9375rem;
+        border-bottom: 1px solid var(--rule);
+        padding-bottom: 2px;
+        width: fit-content;
+      }
+      a:hover { border-bottom-color: var(--ink); }
+      a:focus-visible { outline: 2px solid var(--dissent); outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <svg class="marks" width="86" height="10" viewBox="0 0 86 10" aria-hidden="true">
+        <circle cx="5" cy="5" r="4.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 2.2" opacity="0.5"></circle>
+        <circle cx="21" cy="5" r="4.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 2.2" opacity="0.5"></circle>
+        <circle cx="37" cy="5" r="4.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 2.2" opacity="0.5"></circle>
+      </svg>
+
+      <span class="label">No data</span>
+      <h1>Nothing is stored at this address.</h1>
+      <p>
+        Which is, in its way, the honest answer. Silence is recorded as
+        silence here, never as agreement.
+      </p>
+      <a href="/quorum/">Back to Quorum</a>
+    </main>
+  </body>
+</html>
