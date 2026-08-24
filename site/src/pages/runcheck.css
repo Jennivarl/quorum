@@ -234,3 +234,48 @@
     min-width: 0;
   }
 }
+
+/* ---------- running from the browser ---------- */
+
+.run-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+/* The one filled control on the page, and it is ink. Blue is reserved for
+   dissent and a button is not dissent. */
+.run-button {
+  background: var(--ink);
+  color: var(--ground);
+  font-size: var(--step-0);
+  padding: 0.7rem 1.5rem;
+  border: 1px solid var(--ink);
+  transition: opacity 140ms ease;
+}
+
+.run-button:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.run-button:disabled {
+  background: var(--rule);
+  border-color: var(--rule);
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+.run-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  border-left: 1.5px solid var(--ink);
+  padding: 0.25rem 0 0.25rem 1.25rem;
+}
+
+.run-status p {
+  font-size: var(--step-0);
+  max-width: 62ch;
+  line-height: 1.55;
+}
