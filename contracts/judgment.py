@@ -48,11 +48,18 @@ Answer only from this document. If it does not address the claim, say so
 rather than inferring a likely answer; a document that is silent is more
 useful to record as silent than to fill in.
 
+The "quote" must be copied out of the document character for character. Do
+not tidy it, shorten it in the middle, fix its punctuation, or write it in
+your own words. Every validator checks the quote against its own copy of
+this document and the whole check is rejected if it is not found there, so
+a paraphrase is worse than no quote at all. If you cannot copy an exact
+span, leave it empty and give the answer alone.
+
 Respond using ONLY this JSON format:
 {{
 "status": "found" | "not_stated" | "unreadable",
 "answer": "the shortest exact answer the document supports, or empty",
-"quote": "the sentence you took it from, or empty"
+"quote": "an exact span copied from the document, or empty"
 }}
 Use "found" only when the document directly supports an answer. Use
 "not_stated" when the document is readable but does not address the claim.

@@ -1,0 +1,201 @@
+"""
+Tests for the parts consensus newly covers.
+
+A steward review found the real hole in the earlier design: validators
+attested the verdict and the dissent lists, but not the per-source answers
+or the quotations. Those are the fields a reader treats as evidence, and
+nothing stopped a leader inventing them.
+
+Two rules close it, and both are deterministic, which is what makes them
+usable inside a validator:
+
+  a quote is evidence only if it appears in the document
+  a stored value is attested only if another node reads the same value
+
+Independence is enforced in the same spirit. Five pages from one publisher
+is not corroboration, and the stored record could not previously tell the
+difference.
+"""
+
+from contracts.agreement import (
+    host_of,
+    answers_attest,
+    normalize_space,
+    quote_is_verbatim,
+)
+
+
+DOC = """
+    Lagos State      5,725,116   9,113,605   13,491,800
+    Source: National Population Commission of Nigeria.
+    All population figures for Nigeria show high error rates;
+    census results are disputed.
+"""
+
+
+# --------------------------------------------------------------------
+# quotes
+# --------------------------------------------------------------------
+
+def test_a_verbatim_quote_is_accepted():
+    assert quote_is_verbatim("Lagos State 5,725,116 9,113,605 13,491,800", DOC)
+
+
+def test_whitespace_differences_do_not_matter():
+    """
+    Page rendering collapses runs of space unpredictably, so a quote that
+    survived a different amount of it is still the same span.
+    """
+    assert quote_is_verbatim("census   results\n\n  are disputed", DOC)
+
+
+def test_a_paraphrase_is_rejected():
+    """
+    The whole point. A model that reworded the sentence has not quoted it,
+    and presenting that as a quotation is what this catches.
+    """
+    assert not quote_is_verbatim("Lagos State had 13.5 million people", DOC)
+
+
+def test_a_fabricated_quote_is_rejected():
+    assert not quote_is_verbatim(
+        "The population is definitively 20,000,000 residents", DOC
+    )
+
+
+def test_case_changes_are_rejected():
+    """
+    No case folding. A quotation that changed the text is not verbatim, and
+    being lenient here would slowly turn the check into a similarity score.
+    """
+    assert not quote_is_verbatim("CENSUS RESULTS ARE DISPUTED", DOC)
+
+
+def test_an_empty_quote_is_never_evidence():
+    assert not quote_is_verbatim("", DOC)
+    assert not quote_is_verbatim("   \n  ", DOC)
+
+
+def test_normalize_space_preserves_case_and_content():
+    assert normalize_space("  A   b\n\tc  ") == "A b c"
+
+
+# --------------------------------------------------------------------
+# answers
+# --------------------------------------------------------------------
+
+def test_the_same_number_written_differently_still_attests():
+    assert answers_attest("13,491,800", "13491800")
+
+
+def test_values_inside_tolerance_attest():
+    """
+    Two models reading the same table can round differently. Within the
+    same tolerance used everywhere else, that is the same claim.
+    """
+    assert answers_attest("13,491,800", "13,500,000")
+
+
+def test_values_outside_tolerance_do_not_attest():
+    assert not answers_attest("13,491,800", "17,000,000")
+
+
+def test_percent_and_number_are_different_kinds():
+    assert not answers_attest("40%", "40")
+
+
+def test_dates_must_match_exactly():
+    assert answers_attest("2026-03-21", "21 March 2026")
+    assert not answers_attest("2026-03-21", "2026-03-22")
+
+
+def test_yes_and_no_do_not_attest_each_other():
+    assert answers_attest("yes", "confirmed")
+    assert not answers_attest("yes", "no")
+
+
+def test_prose_is_not_compared_as_text():
+    """
+    Deliberate. Wording genuinely varies between models, so prose is
+    attested by its quote being real and by the reconciliation step, not by
+    string comparison. Demanding equality here would fail honest checks.
+    """
+    assert answers_attest(
+        "the figure rose sharply over the period",
+        "there was a steep increase across those years",
+    )
+
+
+def test_prose_containing_a_number_word_is_read_as_a_number():
+    """
+    Documenting a sharp edge rather than pretending it is not there.
+
+    `classify` scans for number words, so "across the ten years" is read as
+    the value 10 and stops being prose. Against a genuinely wordy answer it
+    then looks like a kind mismatch and fails to attest, which is the safe
+    direction to fail in: the check is rejected rather than a mismatched
+    value being stored. Worth knowing before debugging a puzzling refusal.
+    """
+    assert not answers_attest(
+        "the figure rose sharply over the period",
+        "there was a steep increase across the ten years",
+    )
+
+
+def test_an_answer_and_a_silence_do_not_attest():
+    assert not answers_attest("13,491,800", "")
+    assert not answers_attest("", "13,491,800")
+
+
+def test_two_silences_attest():
+    assert answers_attest("", "not stated")
+
+
+# --------------------------------------------------------------------
+# source independence
+# --------------------------------------------------------------------
+
+def test_host_extraction():
+    cases = [
+        ("https://www.britannica.com/place/Lagos-Nigeria", "britannica.com"),
+        ("http://citypopulation.de/en/nigeria/", "citypopulation.de"),
+        ("https://en.wikipedia.org/api/rest_v1/page/summary/Lagos", "en.wikipedia.org"),
+        ("https://example.com:8443/x?y=1#z", "example.com"),
+        ("https://user@example.org/path", "example.org"),
+        ("HTTPS://WWW.Example.COM/Path", "example.com"),
+    ]
+    for url, expected in cases:
+        assert host_of(url) == expected, url
+
+
+def test_the_reference_sources_are_independent_publishers():
+    origins = [
+        "https://en.wikipedia.org/api/rest_v1/page/summary/Lagos",
+        "https://www.citypopulation.de/en/nigeria/admin/NGA025__lagos/",
+        "https://worldpopulationreview.com/cities/nigeria/lagos",
+        "https://www.britannica.com/place/Lagos-Nigeria",
+        "https://www.wikidata.org/wiki/Special:EntityData/Q8673.json",
+    ]
+    hosts = [host_of(o) for o in origins]
+    assert len(set(hosts)) == len(hosts), hosts
+
+
+def test_archived_copies_share_a_host_which_is_why_origin_matters():
+    """
+    Every frozen fixture is served from raw.githubusercontent.com. Judging
+    independence on the fetched URL would reject the reference check
+    outright, which is why it is judged on where the claim was published
+    rather than on who is hosting the copy.
+    """
+    archived = [
+        "https://raw.githubusercontent.com/Jennivarl/quorum/abc/fixtures/sources/wikipedia.txt",
+        "https://raw.githubusercontent.com/Jennivarl/quorum/abc/fixtures/sources/britannica.txt",
+    ]
+    hosts = [host_of(a) for a in archived]
+    assert len(set(hosts)) == 1, "fixtures really are all one host"
+
+    origins = [
+        "https://en.wikipedia.org/wiki/Lagos",
+        "https://www.britannica.com/place/Lagos-Nigeria",
+    ]
+    assert len({host_of(o) for o in origins}) == 2

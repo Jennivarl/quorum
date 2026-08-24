@@ -30,19 +30,45 @@ How a check runs:
      about something that was never in doubt.
   4. Only genuine prose falls through to the model for reconciliation.
 
-The consensus design is the part worth reading closely. Validators do not
-compare the extracted text, because two models reading the same page will
-write "40 percent" and "40%" and both are correct. They compare the
-decisions those extractions produce: the verdict, and exactly which
-sources dissented. Those are what a caller acts on, and they are stable
-across reasonable differences in wording.
+The consensus design is the part worth reading closely, and the rule is
+that anything durable enough to be read as evidence has to be attested.
+Three things are checked by every validator independently:
+
+  Quotations, by finding them. A stored quote must appear verbatim in the
+  copy of the page that validator fetched for itself. This is what stops a
+  leader inventing a plausible sentence and having it displayed to readers
+  as a receipt.
+
+  Values, by reading them again. Numbers, percentages, dates and yes or no
+  answers are compared as values under the usual tolerance, so a validator
+  has to have read the same figure, not merely agreed about the outcome.
+
+  Decisions, by deriving them. The verdict and the lists of dissenting and
+  silent sources, which is what a caller actually acts on.
+
+What is deliberately not compared is prose wording. Two models reading the
+same page write "40 percent" and "40%" and both are correct, so prose is
+attested by its quote being real and by the reconciliation step, never by
+string equality.
+
+Independence is enforced rather than assumed. Five pages from a single
+publisher is not corroboration, and the stored record would not otherwise
+distinguish it from five independent ones. Sources may be given as an
+archive URL paired with the origin it was published at, and the check is
+rejected when two origins share a host.
 """
 
 from dataclasses import dataclass
 
 from genlayer import *
 
-from contracts.agreement import assess, classify
+from contracts.agreement import (
+    answers_attest,
+    assess,
+    classify,
+    host_of,
+    quote_is_verbatim,
+)
 from contracts.judgment import (
     ANSWER_FOUND,
     build_extraction_prompt,
@@ -67,6 +93,11 @@ _MAX_QUOTE = 240
 @dataclass
 class SourceAnswer:
     url: str
+    # Where the claim was originally published, as distinct from the
+    # archived copy actually fetched. Independence is judged on this, and a
+    # reader auditing the check needs it, so it belongs on chain rather
+    # than in a file the frontend happens to ship.
+    origin: str
     status: str
     answer: str
     quote: str
@@ -114,7 +145,19 @@ class Quorum(gl.Contract):
         if key in self.checks:
             raise gl.vm.UserError(f"already checked: {key}")
 
-        urls = [str(u).strip() for u in (sources or []) if str(u).strip()]
+        urls = []
+        origins = []
+        for entry in sources or []:
+            if isinstance(entry, dict):
+                url = str(entry.get("url", "") or "").strip()
+                origin = str(entry.get("origin", "") or "").strip() or url
+            else:
+                url = str(entry).strip()
+                origin = url
+            if url:
+                urls.append(url)
+                origins.append(origin)
+
         if len(urls) < 2:
             raise gl.vm.UserError(
                 "corroboration needs at least two sources; one source is a "
@@ -122,6 +165,25 @@ class Quorum(gl.Contract):
             )
         if len(urls) > _MAX_SOURCES:
             raise gl.vm.UserError(f"at most {_MAX_SOURCES} sources per check")
+        if len(set(urls)) != len(urls):
+            raise gl.vm.UserError("the same URL is listed more than once")
+
+        # Independence is enforced here rather than trusted, because a
+        # check over five pages from one publisher is not corroboration and
+        # would otherwise be indistinguishable, in the stored record, from
+        # one over five independent ones.
+        #
+        # It is judged on the origin, not the fetched URL, so that archived
+        # copies served from a single host still count as independent when
+        # they were published independently. That is the honest reading:
+        # what matters is who made the claim, not who is hosting the copy.
+        hosts = [host_of(o) for o in origins]
+        repeated = sorted({h for h in hosts if hosts.count(h) > 1})
+        if repeated:
+            raise gl.vm.UserError(
+                "sources must be independent publishers; more than one is "
+                "from " + ", ".join(repeated)
+            )
 
         claim_text = claim.strip()
 
@@ -142,12 +204,18 @@ class Quorum(gl.Contract):
                     build_extraction_prompt(claim_text, page), response_format="json"
                 )
                 got = parse_extraction(raw)
+                quote = got.quote[:_MAX_QUOTE]
+                # A quote that cannot be found in the page is a paraphrase,
+                # and storing it would hand a reader something that looks
+                # like evidence and is not. Drop it and keep the answer.
+                if quote and not quote_is_verbatim(quote, page):
+                    quote = ""
                 found.append(
                     {
                         "url": url,
                         "status": got.status,
                         "answer": got.answer,
-                        "quote": got.quote[:_MAX_QUOTE],
+                        "quote": quote,
                     }
                 )
 
@@ -172,21 +240,104 @@ class Quorum(gl.Contract):
             }
 
         def validator_fn(leaders_res) -> bool:
+            """
+            Attest everything the contract is about to store, not just the
+            verdict.
+
+            An earlier version compared only the verdict and the dissent
+            lists. That left the per-source answers and the quotations
+            unattested, which is a real hole: those are shown to readers as
+            evidence, and a leader could have invented them without any
+            validator disagreeing. Anything durable enough to be treated as
+            evidence has to be covered here.
+
+            The fetch loop is written out again rather than shared with
+            leader_fn because genvm-lint cannot trace gl.nondet calls
+            through a helper, and because the point is that this validator
+            reads the pages itself instead of taking the leader's word for
+            what they contained.
+            """
             if not isinstance(leaders_res, gl.vm.Return):
                 return False
             leader = leaders_res.calldata
-            mine = leader_fn()
 
-            # Compare decisions, not prose. Two models reading the same
-            # page will write "40 percent" and "40%", and rejecting the
-            # leader over that would fail every check that ever ran. What
-            # must match is what a caller acts on: the verdict, and which
-            # sources were counted as dissenting or silent.
-            if mine["verdict"] != leader["verdict"]:
+            claimed = leader["found"]
+            if len(claimed) != len(urls):
                 return False
-            if sorted(mine["dissenting"]) != sorted(leader["dissenting"]):
+
+            mine = []
+            for i, url in enumerate(urls):
+                # The leader must have read the sources it was asked for,
+                # in the order it was asked for them.
+                if str(claimed[i]["url"]) != url:
+                    return False
+
+                try:
+                    page = gl.nondet.web.render(url, mode="text")
+                except Exception:
+                    mine.append(
+                        {"url": url, "status": "unreadable", "answer": "", "quote": ""}
+                    )
+                    continue
+
+                # Check the leader's quote against the copy this validator
+                # fetched. This is what turns a stored quotation from an
+                # assertion into something consensus covers, and it costs
+                # nothing beyond the fetch already being made.
+                leader_quote = str(claimed[i]["quote"] or "")
+                if leader_quote and not quote_is_verbatim(leader_quote, page):
+                    return False
+
+                raw = gl.nondet.exec_prompt(
+                    build_extraction_prompt(claim_text, page), response_format="json"
+                )
+                got = parse_extraction(raw)
+                quote = got.quote[:_MAX_QUOTE]
+                if quote and not quote_is_verbatim(quote, page):
+                    quote = ""
+                mine.append(
+                    {
+                        "url": url,
+                        "status": got.status,
+                        "answer": got.answer,
+                        "quote": quote,
+                    }
+                )
+
+                # The stored value has to be one this validator can sign,
+                # compared as a value rather than as a string.
+                leader_answer = (
+                    str(claimed[i]["answer"] or "")
+                    if str(claimed[i]["status"]) == ANSWER_FOUND
+                    else ""
+                )
+                my_answer = got.answer if got.status == ANSWER_FOUND else ""
+                if not answers_attest(leader_answer, my_answer):
+                    return False
+
+            classified = [
+                classify(f["url"], f["answer"] if f["status"] == ANSWER_FOUND else "")
+                for f in mine
+            ]
+            verdict = assess(classified)
+
+            # Then the decisions, as before. Two models will word the same
+            # finding differently, so what must match is what a caller acts
+            # on: the verdict, and exactly who dissented or stayed silent.
+            if verdict.verdict != leader["verdict"]:
                 return False
-            return sorted(mine["abstaining"]) == sorted(leader["abstaining"])
+            if sorted(verdict.dissenting) != sorted(leader["dissenting"]):
+                return False
+            if sorted(verdict.abstaining) != sorted(leader["abstaining"]):
+                return False
+
+            # The headline value is displayed as the answer, so it must be
+            # one of the answers just attested rather than free text.
+            value = str(leader["value"] or "")
+            if value and value not in [str(f["answer"] or "") for f in claimed]:
+                return False
+
+            return True
 
         result = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
 
@@ -223,11 +374,12 @@ class Quorum(gl.Contract):
             answers=[
                 SourceAnswer(
                     url=f["url"],
+                    origin=origins[i],
                     status=f["status"],
                     answer=f["answer"],
                     quote=f["quote"],
                 )
-                for f in result["found"]
+                for i, f in enumerate(result["found"])
             ],
             dissenting=sorted(dissenting),
             settled_by=settled_by,
@@ -339,7 +491,13 @@ def _as_dict(record: CheckRecord) -> dict:
         "sources_dissenting": record.sources_dissenting,
         "sources_silent": record.sources_silent,
         "answers": [
-            {"url": a.url, "status": a.status, "answer": a.answer, "quote": a.quote}
+            {
+                "url": a.url,
+                "origin": a.origin,
+                "status": a.status,
+                "answer": a.answer,
+                "quote": a.quote,
+            }
             for a in record.answers
         ],
         "dissenting": list(record.dissenting),

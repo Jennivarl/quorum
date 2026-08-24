@@ -103,6 +103,84 @@ def _clean(raw: str) -> str:
     return re.sub(r"\s+", " ", (raw or "").strip().lower())
 
 
+def host_of(url: str) -> str:
+    """
+    The publisher a URL belongs to.
+
+    Hand-rolled rather than parsed with a library, because this decides
+    whether a check is rejected and every validator must derive exactly the
+    same answer from the same string. It also lives here, with the rest of
+    the deterministic logic, so it can be tested without a chain.
+    """
+    text = (url or "").strip().lower()
+    for scheme in ("https://", "http://"):
+        if text.startswith(scheme):
+            text = text[len(scheme):]
+            break
+    text = text.split("/")[0].split("?")[0].split("#")[0]
+    if "@" in text:
+        text = text.split("@")[-1]
+    text = text.split(":")[0]
+    if text.startswith("www."):
+        text = text[4:]
+    return text
+
+
+def normalize_space(raw: str) -> str:
+    """Collapse whitespace without touching case. For comparing spans."""
+    return re.sub(r"\s+", " ", (raw or "").strip())
+
+
+def quote_is_verbatim(quote: str, document: str) -> bool:
+    """
+    Does this quote actually appear in this document?
+
+    A stored quote is only evidence if it can be found in the source. The
+    contract shows quotes to readers as receipts, so an unverifiable one is
+    worse than none: it invites trust it has not earned. Every validator
+    fetches its own copy of the page, so each can answer this question
+    independently, which is what turns a quote from an assertion by the
+    leader into something consensus actually covers.
+
+    Whitespace is normalised on both sides because page rendering collapses
+    runs of space unpredictably. Nothing else is: no case folding, no
+    punctuation stripping, no fuzzy matching. A near-miss is a paraphrase,
+    and a paraphrase presented as a quotation is exactly what this is
+    meant to catch.
+    """
+    needle = normalize_space(quote)
+    if not needle:
+        return False
+    return needle in normalize_space(document)
+
+
+def answers_attest(leader: str, mine: str) -> bool:
+    """
+    Can a validator sign off on the leader's extracted answer?
+
+    Not string equality. Two models reading the same page write "40
+    percent" and "40%", and both are right, so demanding identical wording
+    would fail every check that ever ran.
+
+    Where the answers are objectively comparable, numbers, percentages,
+    dates, yes or no, they are compared as values under the same tolerance
+    used everywhere else. Where they are prose, no comparison is attempted
+    here: wording genuinely varies, and prose is attested instead by its
+    quote being verifiable in the source, plus the reconciliation step
+    that decides which prose answers make the same claim.
+    """
+    a = classify("leader", leader)
+    b = classify("mine", mine)
+
+    if a.kind == KIND_ABSTAIN or b.kind == KIND_ABSTAIN:
+        return a.kind == b.kind
+    if a.kind == KIND_TEXT and b.kind == KIND_TEXT:
+        return True
+    if a.kind != b.kind:
+        return False
+    return _values_agree(a.kind, a.value, b.value)
+
+
 def classify(source: str, raw: str) -> Extracted:
     """
     Work out what kind of answer a source gave, so the right comparison
