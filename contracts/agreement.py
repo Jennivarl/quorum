@@ -154,6 +154,68 @@ def quote_is_verbatim(quote: str, document: str) -> bool:
     return needle in normalize_space(document)
 
 
+def numbers_in(text: str) -> list:
+    """
+    Every number a span contains, scale words applied.
+
+    Used to check that a reported figure is actually present in the quote it
+    was supposedly taken from, so a whole row of a table can be quoted and
+    the specific figure still located inside it.
+    """
+    cleaned = _clean(text)
+    out = []
+    pattern = (
+        r"(-?[\d,]*\.?\d+)\s*"
+        r"(hundred|thousand|million|billion|trillion|k|m|mn|bn|b|tn)?\b"
+    )
+    for match in re.finditer(pattern, cleaned):
+        try:
+            value = float(match.group(1).replace(",", ""))
+        except ValueError:
+            continue
+        if match.group(2):
+            value *= _SCALE_WORDS[match.group(2)]
+        out.append(value)
+    return out
+
+
+def answer_grounded_in_quote(answer: str, quote: str) -> bool:
+    """
+    Is the reported answer actually contained in the quote it came from?
+
+    The second of three checks a validator makes, and the one that catches a
+    leader pairing a genuine quotation with a figure the quotation does not
+    contain. Deterministic, so it costs nothing and every node reaches the
+    same conclusion.
+
+    A quote is not required. Where there is none, this cannot say anything
+    and defers rather than blocking, and the caller falls back to reading
+    the page properly.
+    """
+    if not normalize_space(quote):
+        return True
+
+    extracted = classify("answer", answer)
+    if extracted.kind == KIND_ABSTAIN:
+        return True
+
+    # The plainest case: the answer is written out inside the quote.
+    if normalize_space(answer).lower() in normalize_space(quote).lower():
+        return True
+
+    # Otherwise the figure has to be one of the numbers the quote contains,
+    # which lets a whole table row stand as the quote for one of its cells.
+    if extracted.kind in (KIND_NUMERIC, KIND_PERCENT, KIND_DATE):
+        return any(
+            _values_agree(extracted.kind, extracted.value, candidate)
+            for candidate in numbers_in(quote)
+        )
+
+    # Prose and yes or no cannot be located numerically. The support check
+    # in judgment.py covers those.
+    return True
+
+
 def answers_attest(leader: str, mine: str) -> bool:
     """
     Can a validator sign off on the leader's extracted answer?

@@ -93,6 +93,36 @@ numbers exactly as labelled. Respond with JSON only.
 """
 
 
+_SUPPORT_PROMPT = """A source was read to answer a question, and you are checking
+whether the passage it was taken from actually supports the answer given.
+
+Question:
+{claim}
+
+Passage quoted from the source:
+```passage
+{quote}
+```
+
+Answer reported from that passage:
+{answer}
+
+Say no if the passage is about a different thing than the question asks. A
+passage can be genuine, and contain the reported figure, and still be the
+wrong passage: a historical value where the question asks for a current one,
+a different place, a different measure, a different year. That is exactly
+what you are looking for.
+
+Say yes if the passage genuinely supports that answer to that question.
+
+Respond using ONLY this JSON format:
+{{
+"supports": true | false
+}}
+Respond with JSON only.
+"""
+
+
 @dataclass
 class Extraction:
     status: str
@@ -124,6 +154,46 @@ def build_extraction_prompt(claim: str, document: str, max_chars: int = 6000) ->
     if len(body) > max_chars:
         body = body[:max_chars] + "\n[document truncated]"
     return _EXTRACTION_PROMPT.format(claim=(claim or "").strip(), document=body)
+
+
+def build_support_prompt(claim: str, quote: str, answer: str) -> str:
+    """
+    The cheap verification a validator runs instead of re-reading the page.
+
+    A full extraction sends the whole document and asks an open question,
+    which is slow enough that validators time out before consensus is
+    reached. This sends one passage and asks a closed one, so it is a
+    fraction of the size and a much easier judgement, which also makes
+    validators far more likely to agree with each other.
+
+    It exists to catch the one failure the deterministic checks cannot: a
+    quote that is real, and contains the reported figure, but answers a
+    different question than the one asked.
+    """
+    return _SUPPORT_PROMPT.format(
+        claim=(claim or "").strip(),
+        quote=(quote or "").strip(),
+        answer=(answer or "").strip(),
+    )
+
+
+def parse_support(raw: Any) -> bool:
+    """
+    Unreadable output means not supported.
+
+    The opposite of the rule in parse_extraction, and deliberately so.
+    There, inventing an answer from a broken response would put a
+    fabricated data point into a corroboration count. Here, reading a
+    broken response as approval would wave through the exact thing this
+    check exists to stop.
+    """
+    data = _decode(raw)
+    if not isinstance(data, dict):
+        return False
+    value = data.get("supports")
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() == "true"
 
 
 def build_reconciliation_prompt(claim: str, answers: list) -> str:

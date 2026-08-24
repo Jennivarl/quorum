@@ -199,3 +199,105 @@ def test_archived_copies_share_a_host_which_is_why_origin_matters():
         "https://www.britannica.com/place/Lagos-Nigeria",
     ]
     assert len({host_of(o) for o in origins}) == 2
+
+
+# --------------------------------------------------------------------
+# layer two: is the figure actually inside the quote
+# --------------------------------------------------------------------
+
+from contracts.agreement import answer_grounded_in_quote, numbers_in
+from contracts.judgment import build_support_prompt, parse_support
+
+ROW = "Lagos State 5,725,116 9,113,605 13,491,800"
+
+
+def test_numbers_in_finds_every_figure_in_a_table_row():
+    assert numbers_in(ROW) == [5725116.0, 9113605.0, 13491800.0]
+
+
+def test_scale_words_are_applied():
+    assert numbers_in("about 21 million residents") == [21_000_000.0]
+
+
+def test_a_figure_present_in_the_quote_is_grounded():
+    """
+    A whole table row can stand as the quote for one of its cells, which is
+    what a model naturally returns when the answer sits in a table.
+    """
+    assert answer_grounded_in_quote("13,491,800", ROW)
+
+
+def test_a_figure_absent_from_the_quote_is_not_grounded():
+    """
+    The layer that catches a genuine quotation paired with a made-up
+    number. The row is real; 99,999,999 is not in it.
+    """
+    assert not answer_grounded_in_quote("99,999,999", ROW)
+
+
+def test_a_differently_formatted_figure_is_still_grounded():
+    assert answer_grounded_in_quote("13491800", ROW)
+
+
+def test_prose_answers_are_not_blocked_by_this_layer():
+    """
+    Deliberate. Prose cannot be located numerically, so this defers and the
+    support check decides instead of failing an honest answer.
+    """
+    assert answer_grounded_in_quote("the population is disputed", ROW)
+
+
+def test_no_quote_means_this_layer_defers():
+    assert answer_grounded_in_quote("13,491,800", "")
+
+
+def test_a_silence_is_always_grounded():
+    assert answer_grounded_in_quote("", ROW)
+
+
+# --------------------------------------------------------------------
+# layer three: does the passage answer the question asked
+# --------------------------------------------------------------------
+
+def test_the_support_prompt_is_far_smaller_than_a_full_extraction():
+    """
+    The reason this design works at all. Re-reading the document per
+    validator is what made checks time out; asking about one passage is a
+    fraction of the payload and a much easier question.
+    """
+    from contracts.judgment import build_extraction_prompt
+
+    document = "filler. " * 900
+    big = build_extraction_prompt("What is the population of Lagos?", document)
+    small = build_support_prompt(
+        "What is the population of Lagos?", ROW, "13,491,800"
+    )
+    assert len(small) < len(big) / 5
+
+
+def test_the_support_prompt_names_the_failure_it_is_looking_for():
+    text = build_support_prompt("What is the population?", ROW, "5,725,116")
+    assert "historical value where the question asks for a current one" in text
+    assert ROW in text
+
+
+def test_support_is_parsed_from_either_shape():
+    assert parse_support({"supports": True})
+    assert parse_support('{"supports": true}')
+    assert parse_support({"supports": "true"})
+
+
+def test_a_refusal_is_parsed_as_unsupported():
+    assert not parse_support({"supports": False})
+    assert not parse_support('{"supports": false}')
+
+
+def test_unreadable_output_is_treated_as_unsupported():
+    """
+    The opposite of parse_extraction's rule, deliberately. Reading a broken
+    response as approval would wave through the exact thing this check
+    exists to stop.
+    """
+    assert not parse_support("not json at all")
+    assert not parse_support(None)
+    assert not parse_support({})

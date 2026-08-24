@@ -165,6 +165,68 @@ def quote_is_verbatim(quote: str, document: str) -> bool:
     return needle in normalize_space(document)
 
 
+def numbers_in(text: str) -> list:
+    """
+    Every number a span contains, scale words applied.
+
+    Used to check that a reported figure is actually present in the quote it
+    was supposedly taken from, so a whole row of a table can be quoted and
+    the specific figure still located inside it.
+    """
+    cleaned = _clean(text)
+    out = []
+    pattern = (
+        r"(-?[\d,]*\.?\d+)\s*"
+        r"(hundred|thousand|million|billion|trillion|k|m|mn|bn|b|tn)?\b"
+    )
+    for match in re.finditer(pattern, cleaned):
+        try:
+            value = float(match.group(1).replace(",", ""))
+        except ValueError:
+            continue
+        if match.group(2):
+            value *= _SCALE_WORDS[match.group(2)]
+        out.append(value)
+    return out
+
+
+def answer_grounded_in_quote(answer: str, quote: str) -> bool:
+    """
+    Is the reported answer actually contained in the quote it came from?
+
+    The second of three checks a validator makes, and the one that catches a
+    leader pairing a genuine quotation with a figure the quotation does not
+    contain. Deterministic, so it costs nothing and every node reaches the
+    same conclusion.
+
+    A quote is not required. Where there is none, this cannot say anything
+    and defers rather than blocking, and the caller falls back to reading
+    the page properly.
+    """
+    if not normalize_space(quote):
+        return True
+
+    extracted = classify("answer", answer)
+    if extracted.kind == KIND_ABSTAIN:
+        return True
+
+    # The plainest case: the answer is written out inside the quote.
+    if normalize_space(answer).lower() in normalize_space(quote).lower():
+        return True
+
+    # Otherwise the figure has to be one of the numbers the quote contains,
+    # which lets a whole table row stand as the quote for one of its cells.
+    if extracted.kind in (KIND_NUMERIC, KIND_PERCENT, KIND_DATE):
+        return any(
+            _values_agree(extracted.kind, extracted.value, candidate)
+            for candidate in numbers_in(quote)
+        )
+
+    # Prose and yes or no cannot be located numerically. The support check
+    # in judgment.py covers those.
+    return True
+
+
 def answers_attest(leader: str, mine: str) -> bool:
     """
     Can a validator sign off on the leader's extracted answer?
@@ -505,6 +567,36 @@ numbers exactly as labelled. Respond with JSON only.
 """
 
 
+_SUPPORT_PROMPT = """A source was read to answer a question, and you are checking
+whether the passage it was taken from actually supports the answer given.
+
+Question:
+{claim}
+
+Passage quoted from the source:
+```passage
+{quote}
+```
+
+Answer reported from that passage:
+{answer}
+
+Say no if the passage is about a different thing than the question asks. A
+passage can be genuine, and contain the reported figure, and still be the
+wrong passage: a historical value where the question asks for a current one,
+a different place, a different measure, a different year. That is exactly
+what you are looking for.
+
+Say yes if the passage genuinely supports that answer to that question.
+
+Respond using ONLY this JSON format:
+{{
+"supports": true | false
+}}
+Respond with JSON only.
+"""
+
+
 @dataclass
 class Extraction:
     status: str
@@ -536,6 +628,46 @@ def build_extraction_prompt(claim: str, document: str, max_chars: int = 6000) ->
     if len(body) > max_chars:
         body = body[:max_chars] + "\n[document truncated]"
     return _EXTRACTION_PROMPT.format(claim=(claim or "").strip(), document=body)
+
+
+def build_support_prompt(claim: str, quote: str, answer: str) -> str:
+    """
+    The cheap verification a validator runs instead of re-reading the page.
+
+    A full extraction sends the whole document and asks an open question,
+    which is slow enough that validators time out before consensus is
+    reached. This sends one passage and asks a closed one, so it is a
+    fraction of the size and a much easier judgement, which also makes
+    validators far more likely to agree with each other.
+
+    It exists to catch the one failure the deterministic checks cannot: a
+    quote that is real, and contains the reported figure, but answers a
+    different question than the one asked.
+    """
+    return _SUPPORT_PROMPT.format(
+        claim=(claim or "").strip(),
+        quote=(quote or "").strip(),
+        answer=(answer or "").strip(),
+    )
+
+
+def parse_support(raw: Any) -> bool:
+    """
+    Unreadable output means not supported.
+
+    The opposite of the rule in parse_extraction, and deliberately so.
+    There, inventing an answer from a broken response would put a
+    fabricated data point into a corroboration count. Here, reading a
+    broken response as approval would wave through the exact thing this
+    check exists to stop.
+    """
+    data = _decode(raw)
+    if not isinstance(data, dict):
+        return False
+    value = data.get("supports")
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() == "true"
 
 
 def build_reconciliation_prompt(claim: str, answers: list) -> str:
@@ -793,21 +925,39 @@ class Quorum(gl.Contract):
 
         def validator_fn(leaders_res) -> bool:
             """
-            Attest everything the contract is about to store, not just the
-            verdict.
+            Attest everything the contract is about to store, in three
+            layers, cheapest first.
 
             An earlier version compared only the verdict and the dissent
-            lists. That left the per-source answers and the quotations
-            unattested, which is a real hole: those are shown to readers as
-            evidence, and a leader could have invented them without any
-            validator disagreeing. Anything durable enough to be treated as
-            evidence has to be covered here.
+            lists, which left the per-source answers and the quotations
+            unattested. Those are what a reader treats as evidence, so a
+            leader could have invented them and no validator would have
+            disagreed.
 
-            The fetch loop is written out again rather than shared with
+            The obvious fix, having every validator re-extract from the
+            full document, is the strictest and is also unusable: it is
+            slow enough that validators time out before consensus and no
+            check is ever stored, which protects nothing. These three
+            layers catch the same lies for a fraction of the work.
+
+              1. Is the quote real? Found verbatim in the copy of the page
+                 this validator fetched itself. Deterministic, free.
+              2. Does the quote contain the figure? Deterministic, free,
+                 and catches a genuine quote paired with a made-up number.
+              3. Does the passage answer the question that was asked? One
+                 small closed question, not a re-read of the document.
+                 This is the only layer that costs a model call, and it
+                 exists for the case the other two cannot see: a real
+                 quote, containing the real figure, taken from the wrong
+                 place. A 1991 census row where the claim is about 2022.
+
+            Reading the page properly is kept as the fallback for sources
+            with no usable quote, so nothing goes unchecked either way.
+
+            The fetch loop is written out rather than shared with
             leader_fn because genvm-lint cannot trace gl.nondet calls
             through a helper, and because the point is that this validator
-            reads the pages itself instead of taking the leader's word for
-            what they contained.
+            reads the pages itself rather than trusting what it is told.
             """
             if not isinstance(leaders_res, gl.vm.Return):
                 return False
@@ -832,14 +982,50 @@ class Quorum(gl.Contract):
                     )
                     continue
 
-                # Check the leader's quote against the copy this validator
-                # fetched. This is what turns a stored quotation from an
-                # assertion into something consensus covers, and it costs
-                # nothing beyond the fetch already being made.
                 leader_quote = str(claimed[i]["quote"] or "")
-                if leader_quote and not quote_is_verbatim(leader_quote, page):
-                    return False
+                leader_answer = (
+                    str(claimed[i]["answer"] or "")
+                    if str(claimed[i]["status"]) == ANSWER_FOUND
+                    else ""
+                )
 
+                if leader_quote:
+                    # Layer one. A quotation that is not in the page is a
+                    # paraphrase or an invention, and either way it must
+                    # not be stored as a receipt.
+                    if not quote_is_verbatim(leader_quote, page):
+                        return False
+
+                    # Layer two. The reported figure has to be inside the
+                    # passage it was supposedly read from.
+                    if not answer_grounded_in_quote(leader_answer, leader_quote):
+                        return False
+
+                    # Layer three. The passage has to be about the question
+                    # that was actually asked.
+                    if leader_answer:
+                        verdict_raw = gl.nondet.exec_prompt(
+                            build_support_prompt(
+                                claim_text, leader_quote, leader_answer
+                            ),
+                            response_format="json",
+                        )
+                        if not parse_support(verdict_raw):
+                            return False
+
+                    mine.append(
+                        {
+                            "url": url,
+                            "status": str(claimed[i]["status"]),
+                            "answer": leader_answer,
+                            "quote": leader_quote,
+                        }
+                    )
+                    continue
+
+                # No usable quote, so there is nothing cheap to check
+                # against. Read the page properly for this source rather
+                # than let it through unverified.
                 raw = gl.nondet.exec_prompt(
                     build_extraction_prompt(claim_text, page), response_format="json"
                 )
@@ -847,6 +1033,9 @@ class Quorum(gl.Contract):
                 quote = got.quote[:_MAX_QUOTE]
                 if quote and not quote_is_verbatim(quote, page):
                     quote = ""
+                my_answer = got.answer if got.status == ANSWER_FOUND else ""
+                if not answers_attest(leader_answer, my_answer):
+                    return False
                 mine.append(
                     {
                         "url": url,
@@ -856,26 +1045,15 @@ class Quorum(gl.Contract):
                     }
                 )
 
-                # The stored value has to be one this validator can sign,
-                # compared as a value rather than as a string.
-                leader_answer = (
-                    str(claimed[i]["answer"] or "")
-                    if str(claimed[i]["status"]) == ANSWER_FOUND
-                    else ""
-                )
-                my_answer = got.answer if got.status == ANSWER_FOUND else ""
-                if not answers_attest(leader_answer, my_answer):
-                    return False
-
             classified = [
                 classify(f["url"], f["answer"] if f["status"] == ANSWER_FOUND else "")
                 for f in mine
             ]
             verdict = assess(classified)
 
-            # Then the decisions, as before. Two models will word the same
-            # finding differently, so what must match is what a caller acts
-            # on: the verdict, and exactly who dissented or stayed silent.
+            # Then the decisions. Two models will word the same finding
+            # differently, so what must match is what a caller acts on: the
+            # verdict, and exactly who dissented or stayed silent.
             if verdict.verdict != leader["verdict"]:
                 return False
             if sorted(verdict.dissenting) != sorted(leader["dissenting"]):
