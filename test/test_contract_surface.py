@@ -204,3 +204,101 @@ def test_bundle_imports_no_forbidden_modules():
         elif isinstance(node, ast.ImportFrom) and node.module:
             found.add(node.module.split(".")[0])
     assert not (found & forbidden), f"forbidden imports: {found & forbidden}"
+
+
+# --------------------------------------------------------------------
+# the reference consumer
+# --------------------------------------------------------------------
+
+SETTLE = ROOT / "contracts" / "settle.py"
+
+SETTLE_WRITE = {"settle"}
+SETTLE_VIEW = {
+    "get_settlement",
+    "settlement_ids",
+    "count",
+    "oracle",
+    "minimum_verdict",
+    "divergences",
+}
+
+
+def settle_class(tree: ast.Module) -> ast.ClassDef:
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == "Settle":
+            return node
+    raise AssertionError("no Settle class")
+
+
+def test_the_consumer_has_the_surface_it_documents():
+    methods = public_methods(settle_class(parsed(SETTLE)))
+    assert {n for n, (k, _) in methods.items() if k == "view"} == SETTLE_VIEW
+    assert {n for n, (k, _) in methods.items() if k == "write"} == SETTLE_WRITE
+
+
+def test_the_consumer_needs_no_nondeterminism():
+    """
+    The judgement already happened in Quorum under consensus. A consumer
+    reading a stored verdict should be exact and cheap: no model, no web
+    access, no equivalence principle. If any of that appears here, the
+    consumer has started re-deciding what the oracle already decided.
+    """
+    src = SETTLE.read_text(encoding="utf-8")
+    for forbidden in (
+        "gl.nondet",
+        "run_nondet_unsafe",
+        "eq_principle",
+        "exec_prompt",
+        "web.render",
+    ):
+        assert forbidden not in src, forbidden
+
+
+def test_verdict_strength_is_ordered_weakest_to_strongest():
+    """
+    The whole refusal rule is a comparison against this table, so an
+    ordering mistake would silently settle on contested figures.
+    """
+    tree = parsed(SETTLE)
+    table = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            targets = [ast.unparse(t) for t in node.targets]
+            if "_STRENGTH" in targets:
+                table = ast.literal_eval(node.value)
+    assert table is not None, "no _STRENGTH table"
+    assert table == {
+        "no_data": 0,
+        "contested": 1,
+        "majority": 2,
+        "corroborated": 3,
+    }
+    assert list(table.values()) == sorted(table.values())
+
+
+def test_a_refused_settlement_stores_no_value():
+    """
+    Refusing and then storing the figure anyway would leave the exact
+    number a caller must not act on sitting in the record as though it had
+    been accepted.
+    """
+    src = SETTLE.read_text(encoding="utf-8")
+    assert 'value=value if settled else ""' in src
+
+
+def test_the_counterfactual_is_recorded():
+    """
+    The argument for the whole project is the case where dissent changed
+    the decision. If the naive comparison stops being stored, that argument
+    stops being demonstrable.
+    """
+    src = SETTLE.read_text(encoding="utf-8")
+    assert "naive_value" in src
+    assert "naive_would_settle" in src
+    methods = public_methods(settle_class(parsed(SETTLE)))
+    assert "divergences" in methods
+
+
+def test_the_consumer_is_pure_ascii():
+    raw = SETTLE.read_bytes()
+    assert not [(i, b) for i, b in enumerate(raw) if b > 127 or b == 8]
