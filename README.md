@@ -180,12 +180,12 @@ meant to remove. A commit URL cannot change.
 
 | Contract | Network | Address |
 |---|---|---|
-| `Quorum` | Bradbury | [`0x81a4Fc208D3E5358D65C447f9e1339229d99ddC0`](https://explorer-bradbury.genlayer.com/address/0x81a4Fc208D3E5358D65C447f9e1339229d99ddC0) |
+| `Quorum` | Bradbury | [`0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882`](https://explorer-bradbury.genlayer.com/address/0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882) |
 
 All seven view methods work and are free to call:
 
 ```bash
-genlayer call 0x81a4Fc208D3E5358D65C447f9e1339229d99ddC0 count \
+genlayer call 0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882 count \
   --rpc https://rpc-bradbury.genlayer.com
 ```
 
@@ -200,7 +200,7 @@ against different pairs of sources:
 | `lagos-metro-vs-state` | contested | 50% | wikipedia, citypopulation |
 
 ```bash
-genlayer call 0x81a4Fc208D3E5358D65C447f9e1339229d99ddC0 summaries \
+genlayer call 0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882 summaries \
   --rpc https://rpc-bradbury.genlayer.com
 ```
 
