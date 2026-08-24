@@ -1,7 +1,7 @@
 {
   "note": "Real output from a real run of this contract against the five archived sources on 2026-08-19. The transaction did not finalise on Bradbury, so this record is not currently readable from the chain. It is committed here so the site renders the genuine result, and the page states on screen whether it is showing chain data or this copy. Reproducible from fixtures/ and asserted by the test suite.",
   "check_id": "lagos-population",
-  "contract": "0x28Fc13A5864549c2e22ccBd6c85426De12614E55",
+  "contract": "0x81a4Fc208D3E5358D65C447f9e1339229d99ddC0",
   "run_at": "2026-08-19",
   "claim": "What is the population of Lagos, Nigeria?",
   "verdict": "contested",

@@ -1,6 +1,6 @@
 import type { CheckRecord, ReferenceRecord, Summary } from "./types";
 
-export const CONTRACT = "0x28Fc13A5864549c2e22ccBd6c85426De12614E55";
+export const CONTRACT = "0x81a4Fc208D3E5358D65C447f9e1339229d99ddC0";
 export const RPC = "https://rpc-bradbury.genlayer.com";
 export const EXPLORER = `https://explorer-bradbury.genlayer.com/address/${CONTRACT}`;
 
@@ -134,10 +134,14 @@ export async function loadReferenceCheck(): Promise<Loaded<ReferenceRecord>> {
         ...cached,
         ...live,
         check_id: id,
+        // The contract stores the origin now, so prefer what is on chain
+        // and only fall back to the committed copy for the two fields it
+        // genuinely does not hold: the human publisher name and when the
+        // archive was captured.
         answers: live.answers.map((a) => ({
           ...a,
+          origin: a.origin || byUrl.get(a.url)?.origin,
           publisher: byUrl.get(a.url)?.publisher,
-          origin: byUrl.get(a.url)?.origin,
           retrieved: byUrl.get(a.url)?.retrieved,
         })),
       },

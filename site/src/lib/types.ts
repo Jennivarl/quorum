@@ -76,12 +76,20 @@ export function tally(record: CheckRecord): Record<Standing, number> {
  */
 export function publisherOf(answer: SourceAnswer): string {
   if (answer.publisher) return answer.publisher;
+
+  // The contract now stores the origin, so the publisher can be named from
+  // where the claim was published rather than from whatever file the
+  // archived copy happens to sit in. Falling back to the archive URL would
+  // label every source "raw.githubusercontent.com", which tells a reader
+  // nothing about independence.
+  const candidate = answer.origin || answer.url;
   try {
-    const url = new URL(answer.url);
+    const url = new URL(candidate);
+    const host = url.hostname.replace(/^www\./, "");
+    if (host !== "raw.githubusercontent.com") return host;
     const file = url.pathname.split("/").pop() ?? "";
-    if (file.endsWith(".txt")) return file.replace(/\.txt$/, "");
-    return url.hostname.replace(/^www\./, "");
+    return file.endsWith(".txt") ? file.replace(/\.txt$/, "") : host;
   } catch {
-    return answer.url;
+    return candidate;
   }
 }
