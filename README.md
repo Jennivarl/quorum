@@ -26,29 +26,31 @@ deciding whether to pay out on a value knows which one it is holding.
 
 ## What a check returns
 
-This is real output from a real run against the five archived sources,
-reproducible from `fixtures/` and asserted by the test suite. It is not
-currently readable from the chain: see [Deployment](#deployment) for why.
+This is a real record stored on Bradbury, read back from the contract. Both
+sources are live third-party APIs on unrelated hosts, not archived copies of
+anything in this repository.
 
 ```
-verdict:    contested
-value:      13,491,800
-agreement:  40%
+check:      nigeria-2018
+claim:      What was the population of Nigeria in 2018?
+verdict:    corroborated
+agreement:  100%
+value:      204,938,755
 settled by: arithmetic
 
-agreeing    citypopulation          13,491,800
-            britannica              13,745,000
-
-dissenting  wikipedia               between 17 and 21 million
-            worldpopulationreview   14,881,845
-            wikidata                15070000
+api.worldbank.org     204938755    "date":"2018","value":204938755
+countriesnow.space    195874740    {"year":2018,"value":195874740}
 ```
 
-Two sources put Lagos State near 13.5 million on the 2022 projection.
-Three measure the metropolitan area instead and land between 14.9 and 21
-million. That is a documented methodological dispute rather than an
-error, and it is exactly what a single-source oracle would have hidden
-behind one confident number.
+The two figures differ by 4.4%, which is inside the tolerance, so they count
+as the same claim. Both quotations were confirmed verbatim by every
+validator against its own copy of the page, and both figures had to be
+present inside the quote they came from.
+
+Ask the same two publishers without pinning the year and they stop agreeing:
+the World Bank reports 227.9 million for 2023 while countriesnow is still on
+2018 data. Thirty-two million apart, both reputable, and a single-source
+oracle would hand back whichever one it happened to read.
 
 Four verdicts:
 
@@ -78,16 +80,36 @@ sentence, so a reader can check the contract's work rather than trust it.
    something that was never in doubt.
 4. **Only genuine prose falls through to the model** for reconciliation.
 
-### The consensus design
+### What consensus actually covers
 
-Validators do not compare extracted text. Two models reading the same page
-write "40 percent" and "40%" and both are right, so comparing prose would
-fail every check that ever ran.
+Anything durable enough to be read as evidence has to be attested, not just
+the headline. Every validator independently checks three things, cheapest
+first:
 
-They compare the **decisions** those extractions produce: the verdict, and
-exactly which sources were counted as dissenting or silent. Those are what
-a caller acts on, and they are stable across reasonable differences in
-wording.
+**Is the quote real?** It must appear verbatim in the copy of the page that
+validator fetched for itself. Deterministic and free. This is what stops a
+leader inventing a plausible sentence and having it displayed as a receipt.
+
+**Is the figure inside that quote?** Also deterministic and free. Catches a
+genuine quotation paired with a number it does not contain.
+
+**Does the passage answer the question asked?** One small closed question,
+not a re-read of the document. This exists for the case the other two cannot
+see: a real quote, containing the real figure, taken from the wrong place. A
+1991 census row where the claim is about 2022.
+
+Reading the page in full is kept as the fallback for any source with no
+usable quote, so nothing goes unchecked either way.
+
+What is deliberately not compared is prose wording. Two models reading the
+same page write "40 percent" and "40%" and both are right, so demanding
+identical text would fail every honest check. Prose is backed by its
+verifiable quote instead.
+
+Independence is enforced rather than assumed. A check whose sources share a
+publisher is rejected, judged on where the claim was published rather than
+where the copy is hosted, so archived copies served from one host still
+count as independent when they were published independently.
 
 ### Agreement rules
 
@@ -119,11 +141,12 @@ so the verdict does not depend on which source happened to be listed first.
 contracts/agreement.py   arithmetic core, no model involved
 contracts/judgment.py    prompt construction and response parsing
 contracts/quorum.py      the contract
+contracts/settle.py      reference consumer, reads a verdict and acts
 contracts/quorum_bundle.py  generated, this is what deploys
 deploy/build_bundle.py   inlines the modules into one file
 fixtures/                archived sources for the reference check
 site/                    the frontend, Vite and React, GitHub Pages
-test/                    69 tests
+test/                    108 tests
 ```
 
 GenVM deploys a single file with no access to sibling modules, so the
@@ -181,69 +204,55 @@ meant to remove. A commit URL cannot change.
 | Contract | Network | Address |
 |---|---|---|
 | `Quorum` | Bradbury | [`0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882`](https://explorer-bradbury.genlayer.com/address/0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882) |
+| `Settle` | Bradbury | [`0xb1E9Ddf90a0F127e31f136980c6517a2E96d4470`](https://explorer-bradbury.genlayer.com/address/0xb1E9Ddf90a0F127e31f136980c6517a2E96d4470) |
 
-All seven view methods work and are free to call:
+`Settle` is the reference consumer. See [INTEGRATING.md](INTEGRATING.md).
 
-```bash
-genlayer call 0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882 count \
-  --rpc https://rpc-bradbury.genlayer.com
-```
-
-### Checks stored on chain
-
-Two checks are stored and readable right now, both of the same claim
-against different pairs of sources:
-
-| id | verdict | agreement | sources |
-|---|---|---|---|
-| `lagos-pair` | contested | 50% | citypopulation, wikidata |
-| `lagos-metro-vs-state` | contested | 50% | wikipedia, citypopulation |
+Every view is free to call:
 
 ```bash
 genlayer call 0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882 summaries \
   --rpc https://rpc-bradbury.genlayer.com
 ```
 
-The five-source run shown at the top of this file produced the correct
-verdict and the correct three dissenters, and can be reproduced locally
-from `fixtures/`, but it has never survived to finalisation. See below.
+### Stored on chain
 
-### What Bradbury will and will not carry
+```
+nigeria-2018          corroborated  100%   204,938,755
+settle-nigeria-2018   settled: corroborated at 100% meets the majority bar
+```
 
-A `check` write costs one fetch and one prompt per source, and every
-validator repeats the whole thing independently. A five-source check is
-therefore roughly thirty model calls inside a single transaction.
+The independence rule is also demonstrable rather than merely claimed. A
+check submitted with two sources from the same publisher returned
+`FINISHED_WITH_ERROR` with `resultName: AGREE`, meaning every validator
+independently agreed to reject it, and nothing was stored.
 
-Observed across a dozen attempts on two deployments:
+### Why checks time out, and the one setting that matters
 
-| sources | outcome |
-|---|---|
-| 2 | lands, roughly half the time |
-| 3 | `LEADER_TIMEOUT` every attempt |
-| 5 | `LEADER_TIMEOUT` or `VALIDATORS_TIMEOUT` every attempt |
+A check is heavy: every validator fetches and reads every source itself. When
+a validator set runs out of time, consensus rotates the work to a fresh set
+and retries within the same transaction.
 
-Three properties of this are worth knowing before you debug something
-that is not broken.
+**The default is three rotations, and the CLI has no flag to change it.**
+Every timed-out check in this project was a transaction that exhausted its
+rotations, not one that was rejected. The frontend asks for eight, which is
+why running a check from the browser succeeds more often than from the
+terminal.
 
-**A timeout is not proof of failure.** One run reported `LEADER_TIMEOUT`
-and had nevertheless been written by the time the status was read back.
+Three properties are worth knowing before debugging something that is not
+broken:
 
-**A successful read is not proof of success.** The same run later rolled
-back to nothing, because the transaction never finalised. A separate
-check, `lagos-state-figures`, was readable for several minutes and then
-vanished the same way. Read twice, minutes apart, before believing state
-exists.
+**A timeout is not proof of failure.** One run reported `LEADER_TIMEOUT` and
+had nevertheless been written by the time the status was read back.
 
-**A failed attempt writes nothing at all.** Nothing partial is ever
-stored, so retrying is always safe.
+**A successful read is not proof of success.** The same run later rolled back
+to nothing, because the transaction never finalised. Read twice, minutes
+apart, before believing state exists.
 
-Separately, the network sometimes reverts every write at the consensus
-contract, including writes with fresh ids on freshly deployed contracts,
-while `eth_call` replaying the identical transaction against current
-state succeeds. That is validator assignment failing upstream, not a
-contract error, and the only remedy is to wait.
+**A failed attempt writes nothing at all.** Nothing partial is ever stored,
+so retrying is always safe.
 
-Deploys and all seven view calls go through immediately throughout.
+Deploys and view calls go through immediately throughout.
 
 ---
 
