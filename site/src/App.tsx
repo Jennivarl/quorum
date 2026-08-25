@@ -5,6 +5,7 @@ import RunCheck from "./pages/RunCheck";
 import Result from "./pages/Result";
 import Archive from "./pages/Archive";
 import Method from "./pages/Method";
+import Escrow from "./pages/Escrow";
 
 /**
  * Hash routing, deliberately.
@@ -46,6 +47,7 @@ function render(route: string) {
   if (route === "/run") return <RunCheck />;
   if (route === "/archive") return <Archive />;
   if (route === "/method") return <Method />;
+  if (route === "/escrow") return <Escrow />;
 
   const check = route.match(/^\/check\/(.+)$/);
   if (check) return <Result checkId={decodeURIComponent(check[1])} />;

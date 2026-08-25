@@ -4,6 +4,7 @@ import "./chrome.css";
 
 const NAV: [string, string][] = [
   ["#/run", "Run a check"],
+  ["#/escrow", "Escrow"],
   ["#/archive", "Archive"],
   ["#/method", "Method"],
 ];
