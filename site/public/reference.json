@@ -1,68 +1,35 @@
 {
-  "note": "Real output from a real run of this contract against the five archived sources on 2026-08-19. The transaction did not finalise on Bradbury, so this record is not currently readable from the chain. It is committed here so the site renders the genuine result, and the page states on screen whether it is showing chain data or this copy. Reproducible from fixtures/ and asserted by the test suite.",
-  "check_id": "lagos-population",
+  "note": "A real record read back from 0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882 on 2026-08-25. Committed so the site still renders a genuine result when the chain is unreachable. The page states on screen whether it is showing chain data or this copy.",
+  "check_id": "nigeria-2018",
   "contract": "0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882",
-  "run_at": "2026-08-19",
-  "claim": "What is the population of Lagos, Nigeria?",
-  "verdict": "contested",
-  "consensus_value": "13,491,800",
-  "agreement_percent": 40,
-  "sources_answered": 5,
-  "sources_dissenting": 3,
+  "run_at": "2026-08-25",
+  "finalised": true,
+  "claim": "What was the population of Nigeria in 2018?",
+  "verdict": "corroborated",
+  "consensus_value": "204938755",
+  "agreement_percent": 100,
+  "sources_answered": 2,
+  "sources_dissenting": 0,
   "sources_silent": 0,
   "settled_by": "arithmetic",
   "checked_by": "0xAdDf20fe0e1E86CD6b4032807028356317bE8345",
   "answers": [
     {
-      "url": "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/wikipedia.txt",
-      "publisher": "Wikipedia",
-      "origin": "https://en.wikipedia.org/api/rest_v1/page/summary/Lagos",
-      "retrieved": "2026-08-18T01:45:28Z",
+      "url": "https://api.worldbank.org/v2/country/NGA/indicator/SP.POP.TOTL?format=json&per_page=1&date=2018",
+      "origin": "https://api.worldbank.org/v2/country/NGA/indicator/SP.POP.TOTL?format=json&per_page=1&date=2018",
+      "publisher": "World Bank",
       "status": "found",
-      "answer": "between 17 and 21 million",
-      "quote": "As of November 2025, the size of the city's population has been estimated to be between 17 and 21 million residents, making Lagos the largest city in Nigeria, the most populous urban area on the African continent, and one of the fastest-gro"
+      "answer": "204938755",
+      "quote": "\"date\":\"2018\",\"value\":204938755"
     },
     {
-      "url": "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/citypopulation.txt",
-      "publisher": "citypopulation.de",
-      "origin": "https://www.citypopulation.de/en/nigeria/admin/NGA025__lagos/",
-      "retrieved": "2026-08-18T01:45:28Z",
+      "url": "https://countriesnow.space/api/v0.1/countries/population/q?country=nigeria",
+      "origin": "https://countriesnow.space/api/v0.1/countries/population/q?country=nigeria",
+      "publisher": "countriesnow.space",
       "status": "found",
-      "answer": "13,491,800",
-      "quote": "Lagos State 5,725,116 9,113,605 13,491,800"
-    },
-    {
-      "url": "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/worldpopulationreview.txt",
-      "publisher": "World Population Review",
-      "origin": "https://worldpopulationreview.com/cities/nigeria/lagos",
-      "retrieved": "2026-08-18T01:45:28Z",
-      "status": "found",
-      "answer": "14,881,845",
-      "quote": "Lagos's 2026 population is now estimated at 14,881,845."
-    },
-    {
-      "url": "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/britannica.txt",
-      "publisher": "Encyclopaedia Britannica",
-      "origin": "https://www.britannica.com/place/Lagos-Nigeria",
-      "retrieved": "2026-08-18T01:45:28Z",
-      "status": "found",
-      "answer": "13,745,000",
-      "quote": "Recent estimates show the urban agglomeration to be 13,745,000."
-    },
-    {
-      "url": "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/wikidata.txt",
-      "publisher": "Wikidata",
-      "origin": "https://www.wikidata.org/wiki/Special:EntityData/Q8673.json",
-      "retrieved": "2026-08-18T01:45:28Z",
-      "status": "found",
-      "answer": "15070000",
-      "quote": "population 15070000 as of 2022-03-21"
+      "answer": "195874740",
+      "quote": "{\"year\":2018,\"value\":195874740}"
     }
   ],
-  "dissenting": [
-    "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/wikidata.txt",
-    "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/wikipedia.txt",
-    "https://raw.githubusercontent.com/Jennivarl/quorum/3b31b473f78a86d6383790f8c9d3c299f718d435/fixtures/sources/worldpopulationreview.txt"
-  ],
-  "finalised": false
+  "dissenting": []
 }
