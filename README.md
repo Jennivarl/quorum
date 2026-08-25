@@ -141,12 +141,13 @@ so the verdict does not depend on which source happened to be listed first.
 contracts/agreement.py   arithmetic core, no model involved
 contracts/judgment.py    prompt construction and response parsing
 contracts/quorum.py      the contract
-contracts/settle.py      reference consumer, reads a verdict and acts
+contracts/escrow.py      holds value, releases or returns it on a verdict
+contracts/settle.py      read-only reference consumer
 contracts/quorum_bundle.py  generated, this is what deploys
 deploy/build_bundle.py   inlines the modules into one file
 fixtures/                archived sources for the reference check
 site/                    the frontend, Vite and React, GitHub Pages
-test/                    108 tests
+test/                    124 tests
 ```
 
 GenVM deploys a single file with no access to sibling modules, so the
@@ -204,9 +205,12 @@ meant to remove. A commit URL cannot change.
 | Contract | Network | Address |
 |---|---|---|
 | `Quorum` | Bradbury | [`0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882`](https://explorer-bradbury.genlayer.com/address/0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882) |
+| `Escrow` | Bradbury | [`0x6dAdBdb281f3044436E8c01Df20b1AD10fCCF54B`](https://explorer-bradbury.genlayer.com/address/0x6dAdBdb281f3044436E8c01Df20b1AD10fCCF54B) |
 | `Settle` | Bradbury | [`0xb1E9Ddf90a0F127e31f136980c6517a2E96d4470`](https://explorer-bradbury.genlayer.com/address/0xb1E9Ddf90a0F127e31f136980c6517a2E96d4470) |
 
-`Settle` is the reference consumer. See [INTEGRATING.md](INTEGRATING.md).
+`Escrow` holds real value and releases or returns it on a verdict.
+`Settle` is a read-only reference consumer. See
+[INTEGRATING.md](INTEGRATING.md).
 
 Every view is free to call:
 
@@ -218,29 +222,61 @@ genlayer call 0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882 summaries \
 ### Stored on chain
 
 ```
-nigeria-2018          corroborated  100%   204,938,755
-settle-nigeria-2018   settled: corroborated at 100% meets the majority bar
+Quorum   nigeria-2018        corroborated 100%   204,938,755
+                             api.worldbank.org   204938755
+                             countriesnow.space  195874740
+
+Escrow   nigeria-deal-1      released
+                             "corroborated at 100% meets the majority bar"
+                             0.01 GEN, depositor -> payee
+
+Settle   settle-nigeria-2018 settled
 ```
+
+Both sources are live third-party APIs on unrelated hosts. Every quotation
+was confirmed verbatim by each validator against its own copy of the page,
+and every figure had to appear inside the quote it came from.
 
 The independence rule is also demonstrable rather than merely claimed. A
 check submitted with two sources from the same publisher returned
 `FINISHED_WITH_ERROR` with `resultName: AGREE`, meaning every validator
 independently agreed to reject it, and nothing was stored.
 
-### Why checks time out, and the one setting that matters
+### What Bradbury does to a check, in detail
 
-A check is heavy: every validator fetches and reads every source itself. When
-a validator set runs out of time, consensus rotates the work to a fresh set
-and retries within the same transaction.
+A check is heavy: every validator fetches and reads every source itself. Two
+separate things go wrong on this testnet, and they look identical from the
+outside while having completely different causes.
 
-**The default is three rotations, and the CLI has no flag to change it.**
-Every timed-out check in this project was a transaction that exhausted its
-rotations, not one that was rejected. The frontend asks for eight, which is
-why running a check from the browser succeeds more often than from the
-terminal.
+**A transaction can be cancelled without ever running.** The status goes
+`Pending` and then straight to `Canceled`. No leader executed it, no
+validator voted, nothing was rejected. The network accepted the transaction,
+queued it, never assigned it to a validator set, and gave up. Nothing about
+the contract or the claim influences this, and no setting avoids it.
 
-Three properties are worth knowing before debugging something that is not
-broken:
+**A transaction that does run can exhaust its rotations.** When a validator
+set runs out of time, consensus rotates the work to a fresh set and retries
+inside the same transaction. **The default is three, and the CLI has no flag
+to change it.** The frontend asks for eight, which is why running a check
+from the browser succeeds more often than from a terminal.
+
+Telling them apart matters, because the fixes are opposite. Query the status
+directly rather than trusting a client:
+
+```bash
+curl -s -X POST https://rpc-bradbury.genlayer.com \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"gen_getTransactionStatus",
+       "params":[{"txId":"0x..."}]}'
+```
+
+The `params` must be an **object**, not a bare string, and
+`eth_getTransactionByHash` returns null for GenLayer transactions. A pending
+GenLayer check also does **not** show up as a pending EVM nonce, because it
+queues inside the consensus contract rather than the mempool. Checking
+`eth_getTransactionCount` tells you nothing about whether a check is waiting.
+
+### Three properties worth knowing before debugging something that works
 
 **A timeout is not proof of failure.** One run reported `LEADER_TIMEOUT` and
 had nevertheless been written by the time the status was read back.
@@ -252,7 +288,20 @@ apart, before believing state exists.
 **A failed attempt writes nothing at all.** Nothing partial is ever stored,
 so retrying is always safe.
 
-Deploys and view calls go through immediately throughout.
+Deploys and view calls go through immediately throughout, which is why a
+stalled write is never a funding problem or a contract error.
+
+### Value moves on finalisation, not acceptance
+
+`Escrow` emits transfers with `on='finalized'`. The consequence is visible in
+practice: a resolved deal records `released` promptly while the funds stay in
+the contract until the transaction finalises, which is much later.
+
+That is the deliberate trade. State on this network has been observed
+readable and then rolled back, and an escrow that pays out on a transaction
+which later disappears is worse than one that pays slowly. The site says so
+on screen rather than showing `released` and letting a reader assume the
+money has arrived.
 
 ---
 
