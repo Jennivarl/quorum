@@ -279,3 +279,19 @@
   max-width: 62ch;
   line-height: 1.55;
 }
+
+/* Stated before the click, in ink. Not a warning colour: this is a property
+   of the network, not an error the visitor has made. */
+.run-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--sunk);
+  padding: 1.25rem;
+}
+
+.run-notice p {
+  font-size: var(--step-0);
+  line-height: 1.55;
+  max-width: 64ch;
+}

@@ -13,6 +13,15 @@ import { CONTRACT, RPC } from "./chain";
  * genuinely confusing. See `waitForCheck` for the specific trap.
  */
 
+/**
+ * Consensus rotations to allow before the network gives up on a check.
+ *
+ * genlayer-js defaults to 3, and so does the CLI, which has no flag to raise
+ * it. Every timed-out check in this project was a transaction that ran out
+ * of rotations, not one that was rejected.
+ */
+export const MAX_ROTATIONS = 8;
+
 export const CHAIN_ID = 4221;
 export const CHAIN_ID_HEX = "0x107d";
 
@@ -147,6 +156,14 @@ export async function submitCheck(
       sources.map((s) => ({ url: s.url, origin: s.origin || s.url })),
     ],
     value: BigInt(0),
+    // The default is three. A check is heavy, because every validator
+    // fetches and reads every source itself, and on this testnet a
+    // validator set frequently fails to finish in time. Each rotation hands
+    // the work to a fresh set within the same transaction, so raising this
+    // buys more chances without another signature and without another fee
+    // for work already done. It costs wall-clock time, which is the right
+    // thing to spend here.
+    consensusMaxRotations: MAX_ROTATIONS,
   });
 
   return String(hash);

@@ -7,6 +7,7 @@ import {
   waitForCheck,
   walletAvailable,
   walletError,
+  MAX_ROTATIONS,
 } from "../lib/wallet";
 import "./runcheck.css";
 
@@ -425,6 +426,7 @@ function Runner({
   const [account, setAccount] = useState<string | null>(null);
   const [hasWallet, setHasWallet] = useState(false);
   const [run, setRun] = useState<RunState>({ phase: "idle" });
+  const [tries, setTries] = useState(0);
 
   useEffect(() => {
     setHasWallet(walletAvailable());
@@ -441,6 +443,7 @@ function Runner({
   }
 
   async function go() {
+    setTries((n) => n + 1);
     setRun({ phase: "signing" });
     let hash = "";
     try {
@@ -482,6 +485,22 @@ function Runner({
         wants the answer. This page never asks for a key and never holds
         funds. Your wallet signs, or it does not.
       </p>
+
+      {/* Said before anyone clicks, not discovered afterwards. Every source
+          is fetched and read on each validator independently, which is a lot
+          to fit in one transaction, and Bradbury does not always manage it. */}
+      <div className="run-notice">
+        <span className="label">What to expect</span>
+        <p className="soft">
+          A check is heavy: every source is fetched and read again on each
+          validator. When a validator set runs out of time, consensus rotates
+          the work to a fresh set and tries again. This page asks for{" "}
+          <span className="value">{MAX_ROTATIONS}</span> rotations rather than
+          the default three, which is why it takes minutes and why it usually
+          gets there. If it still does not, one button runs it again, and a
+          failed attempt stores nothing.
+        </p>
+      </div>
 
       {!hasWallet && (
         <p className="note soft">
@@ -548,9 +567,12 @@ function Runner({
           <span className="label">Did not finalise &middot; {run.status}</span>
           <p className="soft">
             The transaction reached a terminal state but the contract holds
-            no record, so nothing was stored and nothing was charged for
-            storage. Running it again is safe.
+            no record, so nothing was stored. That was attempt {tries}, and
+            running it again is safe.
           </p>
+          <button type="button" className="run-button" onClick={go}>
+            Run it again
+          </button>
           <TxLink hash={run.hash} />
         </div>
       )}
@@ -569,6 +591,9 @@ function Runner({
               Check the archive
             </a>
           </p>
+          <button type="button" className="run-button" onClick={go}>
+            Run it again
+          </button>
           <TxLink hash={run.hash} />
         </div>
       )}
