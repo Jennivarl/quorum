@@ -8,6 +8,16 @@ export type Loaded<T> = {
   data: T;
   /** Where the record actually came from, which the page states plainly. */
   source: "chain" | "cache";
+  /**
+   * Why the cache was used, when it was.
+   *
+   * "absent" and "unreachable" are genuinely different and were previously
+   * reported as the same thing, which had the page claiming the chain was
+   * down whenever a record simply did not exist. On a site arguing that
+   * sources should be reported accurately, that was the wrong thing to get
+   * wrong.
+   */
+  reason?: "absent" | "unreachable";
   error?: string;
 };
 
@@ -148,10 +158,15 @@ export async function loadReferenceCheck(): Promise<Loaded<ReferenceRecord>> {
       source: "chain",
     };
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // A KeyError from the contract means the record is not stored. That is
+    // a different fact from the chain being unreachable, and saying so
+    // matters more here than almost anywhere.
     return {
       data: cached,
       source: "cache",
-      error: err instanceof Error ? err.message : String(err),
+      reason: message.includes("KeyError") ? "absent" : "unreachable",
+      error: message,
     };
   }
 }

@@ -14,7 +14,12 @@ import "./result.css";
 
 type State =
   | { phase: "loading" }
-  | { phase: "ready"; record: CheckRecord; origin: "chain" | "cache" }
+  | {
+      phase: "ready";
+      record: CheckRecord;
+      origin: "chain" | "cache";
+      reason?: "absent" | "unreachable";
+    }
   | { phase: "missing" }
   | { phase: "error"; message: string };
 
@@ -58,14 +63,24 @@ export default function Result({ checkId }: { checkId: string }) {
         // deserves a different page.
         if (message.includes("KeyError")) {
           if (reference && reference.check_id === checkId) {
-            setState({ phase: "ready", record: reference, origin: "cache" });
+            setState({
+              phase: "ready",
+              record: reference,
+              origin: "cache",
+              reason: "absent",
+            });
           } else {
             setState({ phase: "missing" });
           }
           return;
         }
         if (reference && reference.check_id === checkId) {
-          setState({ phase: "ready", record: reference, origin: "cache" });
+          setState({
+            phase: "ready",
+            record: reference,
+            origin: "cache",
+            reason: "unreachable",
+          });
           return;
         }
         setState({ phase: "error", message });
@@ -107,6 +122,7 @@ export default function Result({ checkId }: { checkId: string }) {
   }
 
   const { record, origin } = state;
+  const reason = state.reason;
   const counts = tally(record);
 
   return (
@@ -117,7 +133,7 @@ export default function Result({ checkId }: { checkId: string }) {
             Check {checkId} &middot; {record.answers.length} sources &middot;
             settled by {record.settled_by}
           </span>
-          <SourceBadge source={origin} />
+          <SourceBadge source={origin} reason={reason} />
         </div>
 
         <h1 className="claim result-claim">{record.claim}</h1>

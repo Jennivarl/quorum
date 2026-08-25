@@ -59,12 +59,21 @@ export function Footer() {
  * provenance matters, quietly serving a cached copy as though it were live
  * would be the one unforgivable detail.
  */
-export function SourceBadge({ source }: { source: "chain" | "cache" }) {
+export function SourceBadge({
+  source,
+  reason,
+}: {
+  source: "chain" | "cache";
+  reason?: "absent" | "unreachable";
+}) {
+  if (source === "chain") {
+    return <span className="label source-badge">Read live from the contract</span>;
+  }
   return (
     <span className="label source-badge">
-      {source === "chain"
-        ? "Read live from the contract"
-        : "Cached copy, chain unreachable"}
+      {reason === "absent"
+        ? "Committed copy, this check is not on the contract"
+        : "Committed copy, the chain did not answer"}
     </span>
   );
 }

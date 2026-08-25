@@ -14,7 +14,7 @@ const STEPS: [string, string, string][] = [
   [
     "01",
     "Fetch",
-    "Every source is fetched separately, from a URL pinned to a commit so it cannot change underneath the check.",
+    "Every source is fetched separately, from a different publisher. A stable URL matters: a page that changes between two validators reading it makes them disagree about the page rather than the claim.",
   ],
   [
     "02",
@@ -36,13 +36,15 @@ const STEPS: [string, string, string][] = [
 export default function Home() {
   const [record, setRecord] = useState<ReferenceRecord | null>(null);
   const [origin, setOrigin] = useState<"chain" | "cache">("cache");
+  const [why, setWhy] = useState<"absent" | "unreachable" | undefined>();
 
   useEffect(() => {
     let live = true;
-    loadReferenceCheck().then(({ data, source }) => {
+    loadReferenceCheck().then(({ data, source, reason }) => {
       if (!live) return;
       setRecord(data);
       setOrigin(source);
+      setWhy(reason);
     });
     return () => {
       live = false;
@@ -69,7 +71,7 @@ export default function Home() {
         </div>
       </section>
 
-      <ProofPanel record={record} origin={origin} />
+      <ProofPanel record={record} origin={origin} reason={why} />
 
       <section className="stack" style={{ gap: "var(--gap-l)" }}>
         <div className="section-head">
@@ -103,9 +105,11 @@ export default function Home() {
 function ProofPanel({
   record,
   origin,
+  reason,
 }: {
   record: ReferenceRecord | null;
   origin: "chain" | "cache";
+  reason?: "absent" | "unreachable";
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [resolved, setResolved] = useState(false);
@@ -150,10 +154,10 @@ function ProofPanel({
     <section className="proof">
       <div className="proof-meta">
         <span className="label">
-          Check {record.check_id} &middot; {record.answers.length} archived
+          Check {record.check_id} &middot; {record.answers.length} independent
           sources &middot; settled by {record.settled_by}
         </span>
-        <SourceBadge source={origin} />
+        <SourceBadge source={origin} reason={reason} />
       </div>
 
       <h2 className="claim proof-claim">{record.claim}</h2>
