@@ -231,6 +231,23 @@ export default function Escrow() {
                 {d.verdict ? ` · ${d.verdict} at ${d.agreement_percent}%` : ""}
               </p>
               {d.reason && <p className="soft deal-reason">{d.reason}</p>}
+              {(d.state === "released" ||
+                d.state === "refunded" ||
+                d.state === "cancelled") && (
+                // The decision and the money are two separate moments, and
+                // saying "released" while the funds are still in the
+                // contract would be the exact gap this project complains
+                // about elsewhere. Transfers are emitted on finalisation
+                // rather than acceptance, deliberately, because state on
+                // this network has been observed to roll back.
+                <p className="soft deal-pending">
+                  The decision is recorded. The transfer is emitted on
+                  finalisation rather than acceptance, so the balance moves
+                  once the transaction finalises, which is later and
+                  sometimes much later. Check the contract balance rather
+                  than this line to know whether the funds have moved.
+                </p>
+              )}
               {d.state === "open" && account && (
                 <div className="deal-actions">
                   <button

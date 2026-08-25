@@ -167,3 +167,11 @@
     padding-top: 3rem;
   }
 }
+
+.deal-pending {
+  font-size: var(--step-1);
+  max-width: 64ch;
+  line-height: 1.5;
+  border-left: 1px solid var(--rule);
+  padding-left: 0.875rem;
+}
