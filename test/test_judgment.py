@@ -91,7 +91,11 @@ def test_reconciliation_splits_agreeing_and_dissenting():
     got = parse_reconciliation({"consensus": "about 40m", "agreeing": [1, 2], "dissenting": [3]}, 3)
     assert got.agreeing == [0, 1]
     assert got.dissenting == [2]
-    assert got.consensus == "about 40m"
+    # A summary sentence is not part of the result even when the model
+    # volunteers one. Nothing may reach storage that validators did not
+    # compare, and prose wording cannot be compared without failing
+    # honest checks, so the split is the entire output.
+    assert not hasattr(got, "consensus")
 
 
 def test_out_of_range_indices_are_dropped():

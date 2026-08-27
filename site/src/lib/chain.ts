@@ -144,13 +144,12 @@ export async function loadReferenceCheck(): Promise<Loaded<ReferenceRecord>> {
         ...cached,
         ...live,
         check_id: id,
-        // The contract stores the origin now, so prefer what is on chain
-        // and only fall back to the committed copy for the two fields it
-        // genuinely does not hold: the human publisher name and when the
-        // archive was captured.
+        // Everything shown about a source comes from the chain, because
+        // consensus checked it there. The committed copy contributes only
+        // the two presentational fields the record does not hold: a human
+        // publisher name and when the archive was captured.
         answers: live.answers.map((a) => ({
           ...a,
-          origin: a.origin || byUrl.get(a.url)?.origin,
           publisher: byUrl.get(a.url)?.publisher,
           retrieved: byUrl.get(a.url)?.retrieved,
         })),

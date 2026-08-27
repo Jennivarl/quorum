@@ -558,7 +558,6 @@ levels of detail are not disagreement; a contradiction is.
 
 Respond using ONLY this JSON format:
 {{
-"consensus": "the claim the largest group of answers supports, or empty",
 "agreeing": [answer numbers that support it],
 "dissenting": [answer numbers that contradict it]
 }}
@@ -606,7 +605,6 @@ class Extraction:
 
 @dataclass
 class Reconciliation:
-    consensus: str = ""
     agreeing: list = None
     dissenting: list = None
 
@@ -755,7 +753,6 @@ def parse_reconciliation(raw: Any, answer_count: int) -> Reconciliation:
     dissenting = sorted(dissenting + unaccounted)
 
     return Reconciliation(
-        consensus=str(data.get("consensus", "") or "").strip(),
         agreeing=agreeing,
         dissenting=dissenting,
     )
@@ -777,11 +774,6 @@ _MAX_QUOTE = 240
 @dataclass
 class SourceAnswer:
     url: str
-    # Where the claim was originally published, as distinct from the
-    # archived copy actually fetched. Independence is judged on this, and a
-    # reader auditing the check needs it, so it belongs on chain rather
-    # than in a file the frontend happens to ship.
-    origin: str
     status: str
     answer: str
     quote: str
@@ -830,17 +822,19 @@ class Quorum(gl.Contract):
             raise gl.vm.UserError(f"already checked: {key}")
 
         urls = []
-        origins = []
         for entry in sources or []:
             if isinstance(entry, dict):
+                # Only the URL is read. An earlier version accepted a
+                # separate `origin` naming the publisher, so that archived
+                # copies could still count as independent. That handed the
+                # caller the independence test: two pages from one
+                # publisher passed by declaring different origins. Any such
+                # field is now ignored.
                 url = str(entry.get("url", "") or "").strip()
-                origin = str(entry.get("origin", "") or "").strip() or url
             else:
                 url = str(entry).strip()
-                origin = url
             if url:
                 urls.append(url)
-                origins.append(origin)
 
         if len(urls) < 2:
             raise gl.vm.UserError(
@@ -857,11 +851,14 @@ class Quorum(gl.Contract):
         # would otherwise be indistinguishable, in the stored record, from
         # one over five independent ones.
         #
-        # It is judged on the origin, not the fetched URL, so that archived
-        # copies served from a single host still count as independent when
-        # they were published independently. That is the honest reading:
-        # what matters is who made the claim, not who is hosting the copy.
-        hosts = [host_of(o) for o in origins]
+        # It is judged on the host of the URL the contract actually
+        # fetches, because that is the one thing here the caller cannot
+        # restate. The cost is that archived copies served from a single
+        # host now count as one publisher, so a check built entirely out of
+        # one archive is rejected. That is the conservative direction to
+        # fail in: it refuses checks that might be independent, rather than
+        # accepting checks that are not.
+        hosts = [host_of(u) for u in urls]
         repeated = sorted({h for h in hosts if hosts.count(h) > 1})
         if repeated:
             raise gl.vm.UserError(
@@ -1104,12 +1101,11 @@ class Quorum(gl.Contract):
             answers=[
                 SourceAnswer(
                     url=f["url"],
-                    origin=origins[i],
                     status=f["status"],
                     answer=f["answer"],
                     quote=f["quote"],
                 )
-                for i, f in enumerate(result["found"])
+                for f in result["found"]
             ],
             dissenting=sorted(dissenting),
             settled_by=settled_by,
@@ -1150,13 +1146,24 @@ class Quorum(gl.Contract):
                 return False
             leader = leaders_res.calldata
             mine = leader_fn()
-            # The split is the decision; the summary sentence may vary.
+            # The split is the whole decision. It is also the whole output:
+            # the model is not asked for a summary sentence, because a
+            # sentence two models word differently cannot be compared here
+            # without failing honest checks, and storing one that was never
+            # compared would put an unattested claim on chain.
             return sorted(mine["agreeing"]) == sorted(leader["agreeing"])
 
         out = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+        agreeing = sorted(out["agreeing"])
+        # The stored value is the agreeing source's own words, not a
+        # paraphrase of them. Each quote was verified verbatim against the
+        # page every validator fetched for itself, and the agreeing set was
+        # compared above, so this string is derived entirely from data
+        # consensus has already checked.
+        value = answered[agreeing[0]]["quote"] if agreeing else ""
         return (
-            out["consensus"],
-            [answered[i]["url"] for i in out["agreeing"]],
+            value,
+            [answered[i]["url"] for i in agreeing],
             [answered[i]["url"] for i in out["dissenting"]],
         )
 
@@ -1223,7 +1230,6 @@ def _as_dict(record: CheckRecord) -> dict:
         "answers": [
             {
                 "url": a.url,
-                "origin": a.origin,
                 "status": a.status,
                 "answer": a.answer,
                 "quote": a.quote,

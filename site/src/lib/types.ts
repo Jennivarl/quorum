@@ -12,7 +12,6 @@ export interface SourceAnswer {
   quote: string;
   /** Only present on the committed reference record, not on chain. */
   publisher?: string;
-  origin?: string;
   retrieved?: string;
 }
 
@@ -77,12 +76,10 @@ export function tally(record: CheckRecord): Record<Standing, number> {
 export function publisherOf(answer: SourceAnswer): string {
   if (answer.publisher) return answer.publisher;
 
-  // The contract now stores the origin, so the publisher can be named from
-  // where the claim was published rather than from whatever file the
-  // archived copy happens to sit in. Falling back to the archive URL would
-  // label every source "raw.githubusercontent.com", which tells a reader
-  // nothing about independence.
-  const candidate = answer.origin || answer.url;
+  // The contract stores only the URL it actually fetched, because that is
+  // the one part of a source a caller cannot restate, and independence is
+  // decided on its host. So the name shown here is the host that was read.
+  const candidate = answer.url;
   try {
     const url = new URL(candidate);
     const host = url.hostname.replace(/^www\./, "");

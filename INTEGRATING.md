@@ -24,7 +24,7 @@ record["verdict"]            # corroborated | majority | contested | no_data
 record["consensus_value"]    # the agreed figure, as the source wrote it
 record["agreement_percent"]  # share of answering sources that agreed
 record["dissenting"]         # URLs of the sources that did not
-record["answers"]            # per source: url, origin, status, answer, quote
+record["answers"]            # per source: url, status, answer, quote
 ```
 
 If you only need to branch, `verdict_of(check_id)` returns the verdict
@@ -113,19 +113,22 @@ The contract enforces two rules and will reject a check that breaks them.
 corroboration. Past three or four the marginal source stops paying for its
 fetch and prompt.
 
-**Independent publishers.** A check whose sources share a host is rejected.
-Independence is judged on the origin you supply, not on the URL fetched, so
-archived copies served from one host still count as independent when they
-were published independently:
+**Independent publishers.** A check whose sources share a host is rejected,
+judged on the host of the URL the contract fetches. Nothing you supply
+alongside the URL takes part in that decision, so the rule cannot be talked
+out of:
 
 ```python
 sources = [
-    {"url": archived_a, "origin": "https://api.worldbank.org/..."},
-    {"url": archived_b, "origin": "https://countriesnow.space/..."},
+    "https://api.worldbank.org/...",
+    "https://countriesnow.space/...",
 ]
 ```
 
-Pass plain strings instead and the URL is treated as its own origin.
+Dicts of the form `{"url": ...}` are accepted too, and any other key is
+ignored. The consequence worth planning for is that several archived copies
+served from one host count as a single publisher, so build a check out of
+live third-party URLs rather than out of one archive.
 
 **Prefer stable URLs.** A page that changes between two validators fetching
 it makes them disagree about the page rather than about the claim, and the

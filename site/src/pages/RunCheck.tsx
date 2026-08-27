@@ -450,7 +450,7 @@ function Runner({
       hash = await submitCheck(
         checkId,
         claim,
-        sources.map((url) => ({ url, origin: url })),
+        sources.map((url) => ({ url })),
       );
     } catch (err) {
       const message = walletError(err);

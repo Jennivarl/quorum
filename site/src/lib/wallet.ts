@@ -118,7 +118,7 @@ export async function ensureChain(): Promise<void> {
   }
 }
 
-export type SourceInput = { url: string; origin: string };
+export type SourceInput = { url: string };
 
 /**
  * Submit a check and return its transaction hash.
@@ -153,7 +153,7 @@ export async function submitCheck(
     args: [
       checkId,
       claim,
-      sources.map((s) => ({ url: s.url, origin: s.origin || s.url })),
+      sources.map((s) => s.url),
     ],
     value: BigInt(0),
     // The default is three. A check is heavy, because every validator

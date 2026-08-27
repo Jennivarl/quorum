@@ -50,7 +50,6 @@ export default function Result({ checkId }: { checkId: string }) {
             answers: live_record.answers.map((a) => ({
               ...a,
               publisher: byUrl.get(a.url)?.publisher,
-              origin: byUrl.get(a.url)?.origin,
               retrieved: byUrl.get(a.url)?.retrieved,
             })),
           },
@@ -229,7 +228,7 @@ function SourceEntry({
   standing: Standing;
 }) {
   const [open, setOpen] = useState(false);
-  const hasDetail = Boolean(answer.quote || answer.origin);
+  const hasDetail = Boolean(answer.quote);
 
   return (
     <article className={`entry st-${standing}`}>
@@ -263,16 +262,6 @@ function SourceEntry({
             </blockquote>
           )}
           <div className="entry-prov">
-            {answer.origin && (
-              <a
-                className="label prov-link"
-                href={answer.origin}
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                {answer.origin}
-              </a>
-            )}
             {answer.retrieved && (
               <span className="label">Retrieved {answer.retrieved}</span>
             )}

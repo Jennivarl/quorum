@@ -103,13 +103,27 @@ usable quote, so nothing goes unchecked either way.
 
 What is deliberately not compared is prose wording. Two models reading the
 same page write "40 percent" and "40%" and both are right, so demanding
-identical text would fail every honest check. Prose is backed by its
-verifiable quote instead.
+identical text would fail every honest check.
+
+Nothing unattested is stored in its place. Where prose settles a check, the
+recorded value is the agreeing source's own quote, which every validator
+confirmed verbatim against the page it fetched itself. The model is never
+asked to write a summary of what the sources agreed on, because a sentence
+two models word differently cannot be compared here, and storing one that
+was never compared would put a claim on chain that consensus never checked.
 
 Independence is enforced rather than assumed. A check whose sources share a
-publisher is rejected, judged on where the claim was published rather than
-where the copy is hosted, so archived copies served from one host still
-count as independent when they were published independently.
+host is rejected. It is judged on the host of the URL the contract actually
+fetches, which is the one part of a source a caller cannot restate.
+
+An earlier version accepted a separate publisher name alongside each URL,
+so that archived copies served from one host could still count as
+independent. That handed the caller the test: two pages from a single
+publisher passed by declaring different origins. Archived copies from one
+host now count as one publisher. The cost is that some genuinely
+independent checks are refused, which is the safe direction to fail in;
+accepting sources that are not independent is the direction that makes a
+stored verdict a lie.
 
 ### Agreement rules
 

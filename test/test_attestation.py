@@ -180,25 +180,45 @@ def test_the_reference_sources_are_independent_publishers():
     assert len(set(hosts)) == len(hosts), hosts
 
 
-def test_archived_copies_share_a_host_which_is_why_origin_matters():
+def test_archived_copies_from_one_host_count_as_one_publisher():
     """
-    Every frozen fixture is served from raw.githubusercontent.com. Judging
-    independence on the fetched URL would reject the reference check
-    outright, which is why it is judged on where the claim was published
-    rather than on who is hosting the copy.
+    The cost of judging independence on the fetched URL, stated plainly.
+
+    Every frozen fixture is served from raw.githubusercontent.com, so a
+    check built entirely out of them is now rejected even though the claims
+    were published independently. An earlier version avoided that by
+    letting the caller name the publisher separately, which made the whole
+    test caller-controlled: two pages from one publisher passed by
+    declaring different origins.
+
+    Refusing checks that might be independent is the safe direction to
+    fail. Accepting checks that are not independent is the one that makes
+    the stored verdict a lie.
     """
     archived = [
         "https://raw.githubusercontent.com/Jennivarl/quorum/abc/fixtures/sources/wikipedia.txt",
         "https://raw.githubusercontent.com/Jennivarl/quorum/abc/fixtures/sources/britannica.txt",
     ]
-    hosts = [host_of(a) for a in archived]
-    assert len(set(hosts)) == 1, "fixtures really are all one host"
+    assert len({host_of(a) for a in archived}) == 1
 
-    origins = [
-        "https://en.wikipedia.org/wiki/Lagos",
-        "https://www.britannica.com/place/Lagos-Nigeria",
+
+def test_a_declared_publisher_cannot_split_one_host_into_two():
+    """
+    The exact bypass the rejection named, kept as a regression.
+
+    Two pages from one publisher, each declaring a different origin. Under
+    the old rule these were two hosts and the check was accepted. The rule
+    now reads the URL that was actually fetched, and no value the caller
+    supplies participates in the decision.
+    """
+    urls = [
+        "https://example-news.com/story/one",
+        "https://example-news.com/story/two",
     ]
-    assert len({host_of(o) for o in origins}) == 2
+    declared = ["https://reuters.com/a", "https://apnews.com/b"]
+
+    assert len({host_of(o) for o in declared}) == 2, "the bypass really did split"
+    assert len({host_of(u) for u in urls}) == 1, "the fetched host does not"
 
 
 # --------------------------------------------------------------------

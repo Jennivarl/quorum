@@ -84,7 +84,6 @@ levels of detail are not disagreement; a contradiction is.
 
 Respond using ONLY this JSON format:
 {{
-"consensus": "the claim the largest group of answers supports, or empty",
 "agreeing": [answer numbers that support it],
 "dissenting": [answer numbers that contradict it]
 }}
@@ -132,7 +131,6 @@ class Extraction:
 
 @dataclass
 class Reconciliation:
-    consensus: str = ""
     agreeing: list = None
     dissenting: list = None
 
@@ -281,7 +279,6 @@ def parse_reconciliation(raw: Any, answer_count: int) -> Reconciliation:
     dissenting = sorted(dissenting + unaccounted)
 
     return Reconciliation(
-        consensus=str(data.get("consensus", "") or "").strip(),
         agreeing=agreeing,
         dissenting=dissenting,
     )
