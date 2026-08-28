@@ -131,6 +131,31 @@ def normalize_space(raw: str) -> str:
     return re.sub(r"\s+", " ", (raw or "").strip())
 
 
+def same_publisher(a: str, b: str) -> bool:
+    """
+    Do two hosts belong to the same publisher?
+
+    Equal hosts obviously do. So does a host that sits underneath another,
+    because `news.example.com` and `example.com` are one publisher wearing
+    two names, and treating them as two would let a check be built entirely
+    out of one outlet.
+
+    What this deliberately does not do is reduce a host to its registrable
+    domain. That needs the public suffix list to be correct, and the naive
+    version of it, comparing the last two labels, would read every
+    `*.co.uk` site as one publisher and reject genuinely independent
+    British sources. Refusing to guess leaves one known gap: two sibling
+    subdomains of a parent that is never itself cited, such as
+    `a.example.com` alongside `b.example.com`. That is narrower than the
+    damage the guess would do.
+    """
+    x = (a or "").strip().lower().strip(".")
+    y = (b or "").strip().lower().strip(".")
+    if not x or not y:
+        return x == y
+    return x == y or x.endswith("." + y) or y.endswith("." + x)
+
+
 def quote_is_verbatim(quote: str, document: str) -> bool:
     """
     Does this quote actually appear in this document?

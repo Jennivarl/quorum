@@ -142,6 +142,31 @@ def normalize_space(raw: str) -> str:
     return re.sub(r"\s+", " ", (raw or "").strip())
 
 
+def same_publisher(a: str, b: str) -> bool:
+    """
+    Do two hosts belong to the same publisher?
+
+    Equal hosts obviously do. So does a host that sits underneath another,
+    because `news.example.com` and `example.com` are one publisher wearing
+    two names, and treating them as two would let a check be built entirely
+    out of one outlet.
+
+    What this deliberately does not do is reduce a host to its registrable
+    domain. That needs the public suffix list to be correct, and the naive
+    version of it, comparing the last two labels, would read every
+    `*.co.uk` site as one publisher and reject genuinely independent
+    British sources. Refusing to guess leaves one known gap: two sibling
+    subdomains of a parent that is never itself cited, such as
+    `a.example.com` alongside `b.example.com`. That is narrower than the
+    damage the guess would do.
+    """
+    x = (a or "").strip().lower().strip(".")
+    y = (b or "").strip().lower().strip(".")
+    if not x or not y:
+        return x == y
+    return x == y or x.endswith("." + y) or y.endswith("." + x)
+
+
 def quote_is_verbatim(quote: str, document: str) -> bool:
     """
     Does this quote actually appear in this document?
@@ -859,11 +884,18 @@ class Quorum(gl.Contract):
         # fail in: it refuses checks that might be independent, rather than
         # accepting checks that are not.
         hosts = [host_of(u) for u in urls]
-        repeated = sorted({h for h in hosts if hosts.count(h) > 1})
-        if repeated:
+        clashes = sorted(
+            {
+                " and ".join(sorted((hosts[i], hosts[j])))
+                for i in range(len(hosts))
+                for j in range(i + 1, len(hosts))
+                if same_publisher(hosts[i], hosts[j])
+            }
+        )
+        if clashes:
             raise gl.vm.UserError(
-                "sources must be independent publishers; more than one is "
-                "from " + ", ".join(repeated)
+                "sources must be independent publishers; these are the same "
+                "publisher: " + "; ".join(clashes)
             )
 
         claim_text = claim.strip()
@@ -986,7 +1018,16 @@ class Quorum(gl.Contract):
                     else ""
                 )
 
-                if leader_quote:
+                # The cheap path is only available when the leader is
+                # claiming an answer. A claim that a source said nothing
+                # cannot be attested by checking a quotation: layer two
+                # defers on an empty answer and layer three does not run,
+                # so the three layers would pass while the validator
+                # copied the leader's status. That let a leader silence a
+                # source by attaching a real quote and reporting nothing,
+                # turning a contested check into a corroborated one. A
+                # claimed silence is now always read back from the page.
+                if leader_quote and leader_answer:
                     # Layer one. A quotation that is not in the page is a
                     # paraphrase or an invention, and either way it must
                     # not be stored as a receipt.
@@ -1020,9 +1061,9 @@ class Quorum(gl.Contract):
                     )
                     continue
 
-                # No usable quote, so there is nothing cheap to check
-                # against. Read the page properly for this source rather
-                # than let it through unverified.
+                # No usable quote, or a claimed silence. Either way there
+                # is nothing cheap to check against, so read the page
+                # properly rather than let the source through unverified.
                 raw = gl.nondet.exec_prompt(
                     build_extraction_prompt(claim_text, page), response_format="json"
                 )
@@ -1056,6 +1097,11 @@ class Quorum(gl.Contract):
             if sorted(verdict.dissenting) != sorted(leader["dissenting"]):
                 return False
             if sorted(verdict.abstaining) != sorted(leader["abstaining"]):
+                return False
+            # Whether the model is needed decides both which value is
+            # stored and how the record describes how it was settled, so
+            # it is attested too rather than taken on the leader's word.
+            if bool(verdict.needs_model) != bool(leader["needs_model"]):
                 return False
 
             # The headline value is displayed as the answer, so it must be

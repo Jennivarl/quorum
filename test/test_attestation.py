@@ -18,10 +18,14 @@ difference.
 """
 
 from contracts.agreement import (
-    host_of,
+    KIND_ABSTAIN,
+    answer_grounded_in_quote,
     answers_attest,
+    classify,
+    host_of,
     normalize_space,
     quote_is_verbatim,
+    same_publisher,
 )
 
 
@@ -321,3 +325,44 @@ def test_unreadable_output_is_treated_as_unsupported():
     assert not parse_support("not json at all")
     assert not parse_support(None)
     assert not parse_support({})
+
+
+# --------------------------------------------------------------------
+# the third gap: a claimed silence must not be attestable by a quote
+# --------------------------------------------------------------------
+
+
+def test_an_empty_answer_defers_rather_than_grounding():
+    """
+    Why a claimed silence can never take the cheap attestation path.
+
+    Layer two asks whether the reported figure sits inside the quotation.
+    With no figure reported there is nothing to locate, so it defers and
+    answers True. Layer three does not run at all without an answer. So a
+    leader attaching a real quotation while reporting nothing would clear
+    both, and the validator would then copy the leader's status: a source
+    that contradicted the others gets stored as silent, and contested
+    becomes corroborated.
+
+    The full re-read is what actually catches it, which is why a claimed
+    silence is routed there instead.
+    """
+    quote = "Nigeria had a population of 195,874,740 in 2018."
+    assert answer_grounded_in_quote("", quote) is True
+    assert classify("s", "").kind == KIND_ABSTAIN
+    # And the check that does catch it.
+    assert answers_attest("", "195874740") is False
+
+
+def test_same_publisher_catches_a_host_sitting_under_another():
+    assert same_publisher("example.com", "example.com")
+    assert same_publisher("news.example.com", "example.com")
+    assert same_publisher("example.com", "news.example.com")
+
+
+def test_same_publisher_keeps_unrelated_hosts_apart():
+    assert not same_publisher("api.worldbank.org", "countriesnow.space")
+    # The naive registrable-domain guess would collapse these into one.
+    assert not same_publisher("bbc.co.uk", "guardian.co.uk")
+    # A shared ending that is not a label boundary is not a parent.
+    assert not same_publisher("notexample.com", "example.com")
