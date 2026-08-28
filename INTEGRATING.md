@@ -16,7 +16,7 @@ happened inside QUORUM under consensus. A consumer should be cheap.
 ```python
 from genlayer import *
 
-QUORUM = "0x1caDea1ae89DD8BfAB614d47A6B6BAe84282fE3F"
+QUORUM = "0x1A1F0fa2F732BEf8138AB6Ab3f3ae199766Ac1da"
 
 record = gl.get_contract_at(Address(QUORUM)).view().get_check("nigeria-2018")
 
