@@ -10,7 +10,7 @@ import { MAX_ROTATIONS, ensureChain, currentAccount, connect } from "./wallet";
  * made from a terminal at all, and a wallet is the only route.
  */
 
-export const ESCROW = "0x6dAdBdb281f3044436E8c01Df20b1AD10fCCF54B";
+export const ESCROW = "0x05332FC95d68d0Da23B9BaCEdC32Ff7F67520976";
 export const ESCROW_EXPLORER = `https://explorer-bradbury.genlayer.com/address/${ESCROW}`;
 
 export type DealState = "open" | "released" | "refunded" | "cancelled";

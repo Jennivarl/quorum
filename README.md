@@ -218,9 +218,9 @@ meant to remove. A commit URL cannot change.
 
 | Contract | Network | Address |
 |---|---|---|
-| `Quorum` | Bradbury | [`0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882`](https://explorer-bradbury.genlayer.com/address/0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882) |
-| `Escrow` | Bradbury | [`0x6dAdBdb281f3044436E8c01Df20b1AD10fCCF54B`](https://explorer-bradbury.genlayer.com/address/0x6dAdBdb281f3044436E8c01Df20b1AD10fCCF54B) |
-| `Settle` | Bradbury | [`0xb1E9Ddf90a0F127e31f136980c6517a2E96d4470`](https://explorer-bradbury.genlayer.com/address/0xb1E9Ddf90a0F127e31f136980c6517a2E96d4470) |
+| `Quorum` | Bradbury | [`0x1caDea1ae89DD8BfAB614d47A6B6BAe84282fE3F`](https://explorer-bradbury.genlayer.com/address/0x1caDea1ae89DD8BfAB614d47A6B6BAe84282fE3F) |
+| `Escrow` | Bradbury | [`0x05332FC95d68d0Da23B9BaCEdC32Ff7F67520976`](https://explorer-bradbury.genlayer.com/address/0x05332FC95d68d0Da23B9BaCEdC32Ff7F67520976) |
+| `Settle` | Bradbury | [`0xC683aeBEde118223976A12E8Cc8EA75C7ff7a6CB`](https://explorer-bradbury.genlayer.com/address/0xC683aeBEde118223976A12E8Cc8EA75C7ff7a6CB) |
 
 `Escrow` holds real value and releases or returns it on a verdict.
 `Settle` is a read-only reference consumer. See
@@ -229,7 +229,7 @@ meant to remove. A commit URL cannot change.
 Every view is free to call:
 
 ```bash
-genlayer call 0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882 summaries \
+genlayer call 0x1caDea1ae89DD8BfAB614d47A6B6BAe84282fE3F summaries \
   --rpc https://rpc-bradbury.genlayer.com
 ```
 

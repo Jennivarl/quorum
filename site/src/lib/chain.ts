@@ -1,6 +1,6 @@
 import type { CheckRecord, ReferenceRecord, Summary } from "./types";
 
-export const CONTRACT = "0x407C90fB85C0613EFC0a7Dc4833ce1Cea52C9882";
+export const CONTRACT = "0x1caDea1ae89DD8BfAB614d47A6B6BAe84282fE3F";
 export const RPC = "https://rpc-bradbury.genlayer.com";
 export const EXPLORER = `https://explorer-bradbury.genlayer.com/address/${CONTRACT}`;
 
