@@ -230,7 +230,7 @@ meant to remove. A commit URL cannot change.
 | Contract | Network | Address |
 |---|---|---|
 | `Quorum` | Bradbury | [`0x09c857e5c27290F0Fb7A60259132E19be9Af339e`](https://explorer-bradbury.genlayer.com/address/0x09c857e5c27290F0Fb7A60259132E19be9Af339e) |
-| `Escrow` | Bradbury | [`0xD2c89eF60744Ff2845b85b0B19Cc5c095116c7Db`](https://explorer-bradbury.genlayer.com/address/0xD2c89eF60744Ff2845b85b0B19Cc5c095116c7Db) |
+| `Escrow` | Bradbury | [`0x2e666d867eF145847935CD97D01826A10211d75D`](https://explorer-bradbury.genlayer.com/address/0x2e666d867eF145847935CD97D01826A10211d75D) |
 | `Settle` | Bradbury | [`0x58AfABc9D74E8D73818d55Ead7999EA01800CdBF`](https://explorer-bradbury.genlayer.com/address/0x58AfABc9D74E8D73818d55Ead7999EA01800CdBF) |
 
 Both directions are exercised on chain against the same contract. The same
