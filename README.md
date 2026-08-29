@@ -61,8 +61,13 @@ Four verdicts:
 | `contested` | the dissenters are as many or more |
 | `no_data` | no source answered the question |
 
-Every source's own words are stored alongside the verdict, truncated to a
-sentence, so a reader can check the contract's work rather than trust it.
+Where a source can be quoted, its own words are stored alongside the
+verdict, truncated to a sentence, so a reader can check the contract's work
+rather than trust it. A quote is not guaranteed: when no exact span can be
+copied, the quote is left empty rather than paraphrased, and that source is
+attested by every validator re-reading the page in full instead. An empty
+quote is a weaker receipt, and showing it empty is the point. The record on
+chain for `nigeria-current` has one of each.
 
 ---
 
@@ -246,16 +251,33 @@ Quorum   nigeria-2018        corroborated 100%   204,938,755
                              api.worldbank.org   204938755
                              countriesnow.space  195874740
 
+Quorum   nigeria-current     contested     50%   dissent recorded
+                             api.worldbank.org   237,527,782
+                             countriesnow.space  195,874,740   <- dissenting
+
 Escrow   nigeria-deal-1      released
                              "corroborated at 100% meets the majority bar"
                              0.01 GEN, depositor -> payee
 
 Settle   settle-nigeria-2018 settled
+Settle   settle-nigeria-current  NOT settled
+                             "contested at 50% is below the majority bar;
+                              1 source(s) disagreed"
+                             naive_would_settle: true
 ```
 
 Both sources are live third-party APIs on unrelated hosts. Every quotation
 was confirmed verbatim by each validator against its own copy of the page,
 and every figure had to appear inside the quote it came from.
+
+The second record is the one worth reading. Asked the same question without
+pinning a year, the World Bank answers with 2025 and countriesnow with 2018,
+forty-two million apart. Both publishers are right about their own figure.
+QUORUM records `contested`, names countriesnow as the dissenter, and settles
+nothing, while `naive_would_settle: true` states plainly that a single-source
+oracle reading the first result would have paid out on 237,527,782. That
+divergence is queryable on chain through `divergences()` rather than asserted
+here.
 
 The independence rule is also demonstrable rather than merely claimed. A
 check submitted with two sources from the same publisher returned
