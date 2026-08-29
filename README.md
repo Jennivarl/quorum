@@ -233,6 +233,14 @@ meant to remove. A commit URL cannot change.
 | `Escrow` | Bradbury | [`0xD2c89eF60744Ff2845b85b0B19Cc5c095116c7Db`](https://explorer-bradbury.genlayer.com/address/0xD2c89eF60744Ff2845b85b0B19Cc5c095116c7Db) |
 | `Settle` | Bradbury | [`0x58AfABc9D74E8D73818d55Ead7999EA01800CdBF`](https://explorer-bradbury.genlayer.com/address/0x58AfABc9D74E8D73818d55Ead7999EA01800CdBF) |
 
+Both directions are exercised on chain against the same contract. The same
+method, called the same way, paid the payee on a corroborated check and
+returned the deposit on a contested one. Nobody approved either; the only
+input was whether independent sources agreed. `resolve` is deliberately
+callable by anyone, because the verdict is already fixed by consensus and a
+privileged resolver would reinstate the trusted operator this design exists
+to remove.
+
 `Escrow` holds real value and releases or returns it on a verdict.
 `Settle` is a read-only reference consumer. See
 [INTEGRATING.md](INTEGRATING.md).
@@ -258,6 +266,14 @@ Quorum   nigeria-current     contested     50%   dissent recorded
 Escrow   nigeria-deal-1      released
                              "corroborated at 100% meets the majority bar"
                              0.01 GEN, depositor -> payee
+
+Escrow   nigeria-refund-1    refunded
+                             "contested at 50%, below the majority bar;
+                              1 source(s) disagreed, so the deposit is
+                              returned rather than paid on a figure in
+                              dispute"
+                             0.01 GEN, returned to depositor
+                             naive_would_pay: true
 
 Settle   settle-nigeria-2018 settled
 Settle   settle-nigeria-current  NOT settled
