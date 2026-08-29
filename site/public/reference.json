@@ -1,7 +1,7 @@
 {
-  "note": "A real record read back from 0xD29E188d28161A2AE01FD41c1EF4a4fc0861Eb5a on 2026-08-29. Committed so the site still renders a genuine result when the chain is unreachable. Every field here came from the contract; nothing is added for presentation. The page states on screen whether it is showing chain data or this copy.",
+  "note": "A real record read back from 0x09c857e5c27290F0Fb7A60259132E19be9Af339e on 2026-08-29. Committed so the site still renders a genuine result when the chain is unreachable. Every field here came from the contract; nothing is added for presentation. The page states on screen whether it is showing chain data or this copy.",
   "check_id": "nigeria-2018",
-  "contract": "0xD29E188d28161A2AE01FD41c1EF4a4fc0861Eb5a",
+  "contract": "0x09c857e5c27290F0Fb7A60259132E19be9Af339e",
   "run_at": "2026-08-29",
   "finalised": true,
   "claim": "What was the population of Nigeria in 2018?",
@@ -18,7 +18,7 @@
       "url": "https://api.worldbank.org/v2/country/NGA/indicator/SP.POP.TOTL?format=json&per_page=1&date=2018",
       "status": "found",
       "answer": "204938755",
-      "quote": "{\"indicator\":{\"id\":\"SP.POP.TOTL\",\"value\":\"Population, total\"},\"country\":{\"id\":\"NG\",\"value\":\"Nigeria\"},\"countryiso3code\":\"NGA\",\"date\":\"2018\",\"value\":204938755,\"unit\":\"\",\"obs_status\":\"\",\"decimal\":0}"
+      "quote": "\"date\":\"2018\",\"value\":204938755"
     },
     {
       "url": "https://countriesnow.space/api/v0.1/countries/population/q?country=nigeria",

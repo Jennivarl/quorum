@@ -324,6 +324,18 @@ class Quorum(gl.Contract):
                     )
                     return bool(parse_support(verdict_raw))
 
+                # Reaching here means this validator read the page, so a
+                # leader claiming it could not be read is contradicted by
+                # something already in hand. Without this the two silent
+                # statuses are interchangeable to consensus: "unreadable"
+                # and "not_stated" both produce an empty answer, so
+                # answers_attest agrees to either, and whichever the leader
+                # sent is what gets stored and shown. Free to check, and it
+                # is the difference between "the source is broken" and "the
+                # source is silent", which are not the same claim.
+                if str(leader["status"]) == "unreadable":
+                    return False
+
                 # No usable quote, or a claimed silence. Read it properly.
                 raw = gl.nondet.exec_prompt(
                     build_extraction_prompt(claim_text, page),
