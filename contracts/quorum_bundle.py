@@ -899,229 +899,161 @@ class Quorum(gl.Contract):
             )
 
         claim_text = claim.strip()
+        # One consensus round per source, rather than one round covering
+        # all of them.
+        #
+        # The total work is identical. What changes is how much a single
+        # round has to finish before it times out, and on this network that
+        # is the whole difference. Measured back to back: validators doing
+        # no web work settled in about 25 seconds every time, validators
+        # doing two fetches in one round never reached a terminal state at
+        # all. Every check QUORUM can legally accept has at least two
+        # sources, so the old shape could not reliably complete a single
+        # check it was willing to run.
+        #
+        # Splitting also removes the need to attest the verdict inside a
+        # block. The verdict is a pure function of the per-source answers,
+        # so once each source is attested in its own round, every node
+        # derives the same verdict from the same inputs as ordinary
+        # contract code, which consensus already covers. Comparing it
+        # inside the block was guarding something that could not differ.
+        found = []
+        for url in urls:
 
-        def leader_fn():
-            # One fetch and one prompt per source, each prompt seeing only
-            # its own document. Reading them together would let a confident
-            # source colour an ambiguous one and manufacture agreement.
-            found = []
-            for url in urls:
+            def leader_fn(url=url):
+                page = ""
                 try:
-                    page = gl.nondet.web.render(url, mode="text")
+                    # A plain GET, not `render`. `render` returns the page
+                    # "after rendering it in a browser-like environment",
+                    # which is a browser per call on every validator. It is
+                    # also the less honest fetch here: a rendered page
+                    # depends on script timing, so two validators can
+                    # legitimately see different text and disagree about the
+                    # page rather than about the claim. A response body is
+                    # the same bytes for everyone, which is what quoting
+                    # needs. The cost is that a redirect is not followed, so
+                    # a source that moves is recorded unreadable instead of
+                    # silently resolved somewhere else.
+                    resp = gl.nondet.web.get(url)
+                    if resp.status < 400:
+                        page = (resp.body or b"").decode("utf-8", errors="replace")
                 except Exception:
-                    found.append(
-                        {"url": url, "status": "unreadable", "answer": "", "quote": ""}
-                    )
-                    continue
+                    page = ""
+
+                # An error page, a redirect we did not follow, or nothing at
+                # all. All three mean the same thing here: this source did
+                # not give us a document to read, which is recorded rather
+                # than guessed around.
+                if not page.strip():
+                    return {"status": "unreadable", "answer": "", "quote": ""}
+
                 raw = gl.nondet.exec_prompt(
-                    build_extraction_prompt(claim_text, page), response_format="json"
+                    build_extraction_prompt(claim_text, page),
+                    response_format="json",
                 )
                 got = parse_extraction(raw)
                 quote = got.quote[:_MAX_QUOTE]
-                # A quote that cannot be found in the page is a paraphrase,
-                # and storing it would hand a reader something that looks
-                # like evidence and is not. Drop it and keep the answer.
+                # A quote that is not in the page is a paraphrase, and
+                # storing it would hand a reader something that looks like
+                # evidence and is not.
                 if quote and not quote_is_verbatim(quote, page):
                     quote = ""
-                found.append(
-                    {
-                        "url": url,
-                        "status": got.status,
-                        "answer": got.answer,
-                        "quote": quote,
-                    }
-                )
+                return {
+                    "status": got.status,
+                    "answer": got.answer,
+                    "quote": quote,
+                }
 
-            # Classification and agreement are deterministic, and are run
-            # in here so the verdict itself is part of what consensus
-            # covers rather than something each node derives afterwards.
-            classified = [
-                classify(f["url"], f["answer"] if f["status"] == ANSWER_FOUND else "")
-                for f in found
-            ]
-            verdict = assess(classified)
+            def validator_fn(leaders_res, url=url) -> bool:
+                """
+                Attest this one source against a page this validator read
+                for itself, cheapest check first.
 
-            return {
-                "found": found,
-                "verdict": verdict.verdict,
-                "value": verdict.consensus_value,
-                "agreeing": verdict.agreeing,
-                "dissenting": verdict.dissenting,
-                "abstaining": verdict.abstaining,
-                "percent": verdict.agreement_ratio_percent,
-                "needs_model": verdict.needs_model,
-            }
+                  1. Is the quote real? Verbatim in my own copy. Free.
+                  2. Does the quote contain the figure? Free, and catches a
+                     genuine quotation paired with an invented number.
+                  3. Does the passage answer the question asked? One small
+                     closed question, for the case the first two cannot
+                     see: a real quote, with the real figure, taken from
+                     the wrong place.
 
-        def validator_fn(leaders_res) -> bool:
-            """
-            Attest everything the contract is about to store, in three
-            layers, cheapest first.
-
-            An earlier version compared only the verdict and the dissent
-            lists, which left the per-source answers and the quotations
-            unattested. Those are what a reader treats as evidence, so a
-            leader could have invented them and no validator would have
-            disagreed.
-
-            The obvious fix, having every validator re-extract from the
-            full document, is the strictest and is also unusable: it is
-            slow enough that validators time out before consensus and no
-            check is ever stored, which protects nothing. These three
-            layers catch the same lies for a fraction of the work.
-
-              1. Is the quote real? Found verbatim in the copy of the page
-                 this validator fetched itself. Deterministic, free.
-              2. Does the quote contain the figure? Deterministic, free,
-                 and catches a genuine quote paired with a made-up number.
-              3. Does the passage answer the question that was asked? One
-                 small closed question, not a re-read of the document.
-                 This is the only layer that costs a model call, and it
-                 exists for the case the other two cannot see: a real
-                 quote, containing the real figure, taken from the wrong
-                 place. A 1991 census row where the claim is about 2022.
-
-            Reading the page properly is kept as the fallback for sources
-            with no usable quote, so nothing goes unchecked either way.
-
-            The fetch loop is written out rather than shared with
-            leader_fn because genvm-lint cannot trace gl.nondet calls
-            through a helper, and because the point is that this validator
-            reads the pages itself rather than trusting what it is told.
-            """
-            if not isinstance(leaders_res, gl.vm.Return):
-                return False
-            leader = leaders_res.calldata
-
-            claimed = leader["found"]
-            if len(claimed) != len(urls):
-                return False
-
-            mine = []
-            for i, url in enumerate(urls):
-                # The leader must have read the sources it was asked for,
-                # in the order it was asked for them.
-                if str(claimed[i]["url"]) != url:
+                A claimed silence cannot take the cheap path, because layer
+                two defers on an empty answer and layer three does not run,
+                so all three would pass while the status was copied. That
+                let a leader bury a dissenting source by attaching a real
+                quote and reporting nothing. Silence is re-read instead.
+                """
+                if not isinstance(leaders_res, gl.vm.Return):
                     return False
+                leader = leaders_res.calldata
 
+                page = ""
                 try:
-                    page = gl.nondet.web.render(url, mode="text")
+                    resp = gl.nondet.web.get(url)
+                    if resp.status < 400:
+                        page = (resp.body or b"").decode("utf-8", errors="replace")
                 except Exception:
-                    mine.append(
-                        {"url": url, "status": "unreadable", "answer": "", "quote": ""}
-                    )
-                    continue
+                    page = ""
 
-                leader_quote = str(claimed[i]["quote"] or "")
+                if not page.strip():
+                    # I could not read it either, so the only claim I can
+                    # honestly agree with is that it was unreadable.
+                    return str(leader["status"]) == "unreadable"
+
+                leader_quote = str(leader["quote"] or "")
                 leader_answer = (
-                    str(claimed[i]["answer"] or "")
-                    if str(claimed[i]["status"]) == ANSWER_FOUND
+                    str(leader["answer"] or "")
+                    if str(leader["status"]) == ANSWER_FOUND
                     else ""
                 )
 
-                # The cheap path is only available when the leader is
-                # claiming an answer. A claim that a source said nothing
-                # cannot be attested by checking a quotation: layer two
-                # defers on an empty answer and layer three does not run,
-                # so the three layers would pass while the validator
-                # copied the leader's status. That let a leader silence a
-                # source by attaching a real quote and reporting nothing,
-                # turning a contested check into a corroborated one. A
-                # claimed silence is now always read back from the page.
                 if leader_quote and leader_answer:
-                    # Layer one. A quotation that is not in the page is a
-                    # paraphrase or an invention, and either way it must
-                    # not be stored as a receipt.
                     if not quote_is_verbatim(leader_quote, page):
                         return False
-
-                    # Layer two. The reported figure has to be inside the
-                    # passage it was supposedly read from.
                     if not answer_grounded_in_quote(leader_answer, leader_quote):
                         return False
-
-                    # Layer three. The passage has to be about the question
-                    # that was actually asked.
-                    if leader_answer:
-                        verdict_raw = gl.nondet.exec_prompt(
-                            build_support_prompt(
-                                claim_text, leader_quote, leader_answer
-                            ),
-                            response_format="json",
-                        )
-                        if not parse_support(verdict_raw):
-                            return False
-
-                    mine.append(
-                        {
-                            "url": url,
-                            "status": str(claimed[i]["status"]),
-                            "answer": leader_answer,
-                            "quote": leader_quote,
-                        }
+                    verdict_raw = gl.nondet.exec_prompt(
+                        build_support_prompt(claim_text, leader_quote, leader_answer),
+                        response_format="json",
                     )
-                    continue
+                    return bool(parse_support(verdict_raw))
 
-                # No usable quote, or a claimed silence. Either way there
-                # is nothing cheap to check against, so read the page
-                # properly rather than let the source through unverified.
+                # No usable quote, or a claimed silence. Read it properly.
                 raw = gl.nondet.exec_prompt(
-                    build_extraction_prompt(claim_text, page), response_format="json"
+                    build_extraction_prompt(claim_text, page),
+                    response_format="json",
                 )
-                got = parse_extraction(raw)
-                quote = got.quote[:_MAX_QUOTE]
-                if quote and not quote_is_verbatim(quote, page):
-                    quote = ""
-                my_answer = got.answer if got.status == ANSWER_FOUND else ""
-                if not answers_attest(leader_answer, my_answer):
-                    return False
-                mine.append(
-                    {
-                        "url": url,
-                        "status": got.status,
-                        "answer": got.answer,
-                        "quote": quote,
-                    }
-                )
+                mine = parse_extraction(raw)
+                my_answer = mine.answer if mine.status == ANSWER_FOUND else ""
+                return answers_attest(leader_answer, my_answer)
 
-            classified = [
-                classify(f["url"], f["answer"] if f["status"] == ANSWER_FOUND else "")
-                for f in mine
-            ]
-            verdict = assess(classified)
+            got = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+            found.append(
+                {
+                    "url": url,
+                    "status": str(got["status"]),
+                    "answer": str(got["answer"]),
+                    "quote": str(got["quote"]),
+                }
+            )
 
-            # Then the decisions. Two models will word the same finding
-            # differently, so what must match is what a caller acts on: the
-            # verdict, and exactly who dissented or stayed silent.
-            if verdict.verdict != leader["verdict"]:
-                return False
-            if sorted(verdict.dissenting) != sorted(leader["dissenting"]):
-                return False
-            if sorted(verdict.abstaining) != sorted(leader["abstaining"]):
-                return False
-            # Whether the model is needed decides both which value is
-            # stored and how the record describes how it was settled, so
-            # it is attested too rather than taken on the leader's word.
-            if bool(verdict.needs_model) != bool(leader["needs_model"]):
-                return False
+        # Deterministic from here down. Every node holds the same attested
+        # answers, so it reaches the same verdict without another round.
+        classified = [
+            classify(f["url"], f["answer"] if f["status"] == ANSWER_FOUND else "")
+            for f in found
+        ]
+        assessed = assess(classified)
 
-            # The headline value is displayed as the answer, so it must be
-            # one of the answers just attested rather than free text.
-            value = str(leader["value"] or "")
-            if value and value not in [str(f["answer"] or "") for f in claimed]:
-                return False
-
-            return True
-
-        result = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
-
-        verdict = result["verdict"]
-        value = result["value"]
-        agreeing = list(result["agreeing"])
-        dissenting = list(result["dissenting"])
+        verdict = assessed.verdict
+        value = assessed.consensus_value
+        agreeing = list(assessed.agreeing)
+        dissenting = list(assessed.dissenting)
+        abstaining = list(assessed.abstaining)
         settled_by = "arithmetic"
 
-        if result["needs_model"]:
-            value, agreeing, dissenting = self._reconcile(claim_text, result["found"])
+        if assessed.needs_model:
+            value, agreeing, dissenting = self._reconcile(claim_text, found)
             answered = len(agreeing) + len(dissenting)
             if not answered:
                 verdict = "no_data"
@@ -1143,7 +1075,7 @@ class Quorum(gl.Contract):
             agreement_percent=percent,
             sources_answered=answered,
             sources_dissenting=len(dissenting),
-            sources_silent=len(result["abstaining"]),
+            sources_silent=len(abstaining),
             answers=[
                 SourceAnswer(
                     url=f["url"],
@@ -1151,7 +1083,7 @@ class Quorum(gl.Contract):
                     answer=f["answer"],
                     quote=f["quote"],
                 )
-                for f in result["found"]
+                for f in found
             ],
             dissenting=sorted(dissenting),
             settled_by=settled_by,
