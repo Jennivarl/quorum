@@ -68,7 +68,13 @@ sentence, so a reader can check the contract's work rather than trust it.
 
 ## How it works
 
-1. **Each source is fetched separately.** `gl.nondet.web.render` per URL.
+1. **Each source gets its own consensus round.** One `run_nondet_unsafe`
+   per source, each carrying a single fetch and a single prompt. Doing
+   every source in one round is what made checks time out: validators
+   re-read each source, so the round grew with the source count, and two
+   sources is the minimum a check can have. Fetching is a plain HTTP
+   `get`, not a browser render, because a rendered page depends on script
+   timing and two validators can legitimately see different text.
 2. **Each source is read in isolation, one prompt each.** Batching is
    cheaper and destroys the premise: a model shown several documents at
    once reads the ambiguous one in light of the confident one and reports
@@ -258,21 +264,33 @@ independently agreed to reject it, and nothing was stored.
 
 ### What Bradbury does to a check, in detail
 
-A check is heavy: every validator fetches and reads every source itself. Two
-separate things go wrong on this testnet, and they look identical from the
-outside while having completely different causes.
+A check is heavy because every validator re-reads every source rather than
+taking the leader's word for it. How that work is divided turned out to
+matter more than how much of it there is.
 
-**A transaction can be cancelled without ever running.** The status goes
-`Pending` and then straight to `Canceled`. No leader executed it, no
-validator voted, nothing was rejected. The network accepted the transaction,
-queued it, never assigned it to a validator set, and gave up. Nothing about
-the contract or the claim influences this, and no setting avoids it.
+**Work per consensus round is the real limit.** Measured on this network
+with probe contracts differing in one variable at a time: validators doing
+no web work settled in about 25 seconds, three times out of three.
+Validators doing two fetches in a single round never reached a terminal
+state at all, three times out of three, reporting `LEADER_TIMEOUT` with
+`NOT_VOTED` and an empty `eqBlocksOutputs`. Since two sources is the
+minimum a check can have, every check this contract would accept was the
+shape that could not finish. Splitting into one round per source fixed it:
+the reference check stored on the first attempt in 52 seconds.
+
+**A transaction can also be cancelled without ever running.** The status
+goes `Pending` and then straight to `Canceled`. No leader executed it, no
+validator voted, nothing was rejected. Nothing about the contract or the
+claim influences this, and no setting avoids it.
 
 **A transaction that does run can exhaust its rotations.** When a validator
 set runs out of time, consensus rotates the work to a fresh set and retries
 inside the same transaction. **The default is three, and the CLI has no flag
-to change it.** The frontend asks for eight, which is why running a check
-from the browser succeeds more often than from a terminal.
+to change it.** The frontend asks for eight.
+
+**`Finalized` does not mean it worked.** One check reached `Finalized` with
+`eqBlocksOutputs: ""`, every validator vote zero, and nothing stored. Read
+the state, not the status word.
 
 Telling them apart matters, because the fixes are opposite. Query the status
 directly rather than trusting a client:

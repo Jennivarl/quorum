@@ -130,11 +130,16 @@ ignored. The consequence worth planning for is that several archived copies
 served from one host count as a single publisher, so build a check out of
 live third-party URLs rather than out of one archive.
 
-**Prefer stable URLs.** A page that changes between two validators fetching
-it makes them disagree about the page rather than about the claim, and the
-check fails for a reason that has nothing to do with your question. Small
-machine-readable endpoints and archived snapshots both work well; large
-JavaScript-rendered pages do not.
+**Prefer stable, directly fetchable URLs.** Sources are read with a plain
+HTTP `get`, not a browser, so what the contract sees is the response body.
+Small machine-readable endpoints and archived snapshots work well. Pages
+that assemble themselves with JavaScript do not, because the body is a
+shell. Redirects are not followed either, so a URL that moves is recorded
+as unreadable rather than quietly resolved somewhere else.
+
+A page that changes between two validators fetching it makes them disagree
+about the page rather than about the claim, and the check then fails for a
+reason that has nothing to do with your question.
 
 ---
 

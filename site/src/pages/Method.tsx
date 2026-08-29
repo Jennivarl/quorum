@@ -244,11 +244,14 @@ export default function Method() {
             a corroboration.
           </p>
           <p>
-            Each source costs one fetch and one prompt on every validator, so
-            a five-source check is roughly thirty model calls before
-            consensus. The value of another source also drops off sharply:
-            the difference between three and four is large, between eleven and
-            twelve is noise.
+            Each source costs one fetch and one prompt on every validator,
+            and each gets its own consensus round rather than sharing one.
+            That split is what makes a check finish at all: measured on this
+            network, validators doing two fetches inside a single round never
+            reached a terminal state, while the same work divided across
+            rounds settled in under a minute. The value of another source
+            also drops off sharply: the difference between three and four is
+            large, between eleven and twelve is noise.
           </p>
           <p>
             Deployed on Bradbury at{" "}
@@ -279,11 +282,14 @@ export default function Method() {
           hygiene.
         </p>
         <p className="reading">
-          The five reference sources are captured in the repository, each with
-          a header recording its original URL and the moment it was
-          retrieved. On chain they are fetched at a pinned commit hash rather
-          than from a branch, because a branch moves when the branch moves and
-          that would put back exactly the drift the freezing removed.
+          The check stored on chain reads two live third-party APIs on
+          unrelated hosts, not copies kept here. Archived snapshots are still
+          in the repository with a header recording each original URL and the
+          moment it was retrieved, but they can no longer form a check between
+          them: independence is judged on the host actually fetched, and every
+          snapshot is served from the same one. Refusing sources that might be
+          independent is the safe direction to fail in. Accepting sources that
+          are not is the direction that makes a stored verdict a lie.
         </p>
       </section>
     </div>
