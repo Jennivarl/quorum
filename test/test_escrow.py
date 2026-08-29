@@ -255,3 +255,69 @@ def test_divergences_counts_only_refunds_a_naive_oracle_would_have_paid():
 def test_the_contract_is_pure_ascii():
     raw = ESCROW.read_bytes()
     assert not [(i, b) for i, b in enumerate(raw) if b > 127 or b == 8]
+
+
+# --------------------------------------------------------------------
+# the payout must be tied to the question, not just to the check id
+# --------------------------------------------------------------------
+
+
+def _same_claim():
+    """
+    Pull `_same_claim` out of the source and make it callable.
+
+    It is a pure string function with no GenVM dependency, but the module
+    around it imports `genlayer`, so it cannot simply be imported here.
+    """
+    for node in tree().body:
+        if isinstance(node, ast.FunctionDef) and node.name == "_same_claim":
+            ns: dict = {}
+            exec(compile(ast.Module([node], []), "<same_claim>", "exec"), ns)
+            return ns["_same_claim"]
+    raise AssertionError("_same_claim is missing from escrow.py")
+
+
+def test_same_claim_ignores_spacing_and_case():
+    same = _same_claim()
+    assert same("What is the population of Nigeria?",
+                "what is  the population of nigeria?")
+    assert same(" padded ", "padded")
+
+
+def test_same_claim_rejects_a_different_question():
+    same = _same_claim()
+    assert not same("Did the shipment arrive?", "Is water wet?")
+    # Close, but not the same question: one pins a year and one does not,
+    # and on this very contract those two produce opposite verdicts.
+    assert not same("What was the population of Nigeria in 2018?",
+                    "What is the population of Nigeria?")
+
+
+def test_resolve_refuses_to_pay_on_a_different_question():
+    """
+    The gap this closes, asserted on the shape of the source.
+
+    `check` is callable by anyone under any id, and a deal is normally
+    opened before its check exists, so a stranger can store a check under
+    the id a deal names. Without comparing the question, the deposit moves
+    on a verdict about something else entirely. `cancel` is already blocked
+    once any check exists, so the depositor could not recover it either.
+
+    A mismatch must refund rather than raise: refusing would strand the
+    deposit and turn planting a check into a way to freeze someone's funds.
+    """
+    src = ast.unparse(methods()["resolve"][1])
+
+    assert "_same_claim" in src, "resolve does not compare the deal's claim"
+    # ast.unparse normalises quoting, so match either form.
+    assert "record['claim']" in src or 'record["claim"]' in src, (
+        "resolve never reads the check's claim"
+    )
+    # The comparison has to gate the payout, not merely be recorded.
+    assert "on_the_same_question and" in src, (
+        "the claim check does not gate release"
+    )
+    # And it must not abort, or the funds are stranded.
+    assert "UserError" not in src.split("on_the_same_question")[1][:400], (
+        "a claim mismatch raises instead of refunding"
+    )

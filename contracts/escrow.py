@@ -53,6 +53,18 @@ STATE_REFUNDED = "refunded"
 STATE_CANCELLED = "cancelled"
 
 
+def _same_claim(a: str, b: str) -> bool:
+    """
+    Is the deal's question the same question the check answered?
+
+    Compared on collapsed whitespace and case, because the depositor types
+    the claim by hand at deposit time and the check may be created later by
+    someone else. Anything stricter would fail on a stray double space;
+    anything looser would let a different question through.
+    """
+    return " ".join((a or "").split()).lower() == " ".join((b or "").split()).lower()
+
+
 def _as_address(value) -> Address:
     """
     Coerce whatever the calldata layer handed us into an Address.
@@ -178,9 +190,31 @@ class Escrow(gl.Contract):
         dissenting = [str(d) for d in (record["dissenting"] or [])]
         value = str(record["consensus_value"])
 
-        release = _STRENGTH.get(verdict, 0) >= _STRENGTH[self.minimum]
+        # The verdict alone is not enough. `check` is callable by anyone
+        # under any id, and a deal is normally opened before its check
+        # exists, so a stranger can plant a check under the id this deal
+        # names and have the money move on a verdict about a different
+        # question entirely. Bind the payout to the question the deposit
+        # was made against.
+        #
+        # A mismatch refunds rather than refuses. `cancel` is already
+        # blocked once any check exists under the id, so refusing would
+        # strand the deposit and planting a check would become a way to
+        # freeze someone's funds. Returning them means nobody profits from
+        # planting one, and nothing is ever paid out on an unrelated
+        # verdict.
+        on_the_same_question = _same_claim(deal.claim, str(record["claim"]))
+        release = on_the_same_question and (
+            _STRENGTH.get(verdict, 0) >= _STRENGTH[self.minimum]
+        )
 
-        if release:
+        if not on_the_same_question:
+            reason = (
+                "the check stored under this id answers a different question "
+                "than the deal was opened against, so the deposit is "
+                "returned rather than paid on an unrelated verdict"
+            )
+        elif release:
             reason = f"{verdict} at {percent}% meets the {self.minimum} bar"
         elif verdict == "no_data":
             reason = "no source answered, so there is nothing to pay out on"
