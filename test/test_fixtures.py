@@ -42,10 +42,24 @@ EXPECTED = {
 
 # The result the demo advertises. If any of this moves, the README and the
 # frontend are wrong too.
+#
+# These five split into two pairs of equal size, 13.5-13.7 million and
+# 14.9-15.1 million, with wikipedia alone at 19. An earlier version reported
+# britannica and citypopulation as the agreeing majority at 40%, which was
+# an artefact of them sorting first: had the sources been listed in another
+# order the other pair would have "won" and these two would have been the
+# dissenters. Neither pair outnumbers the other, so no answer here is backed
+# by a majority and none is published as the value.
 EXPECTED_VERDICT = "contested"
-EXPECTED_PERCENT = 40
-EXPECTED_AGREEING = {"britannica", "citypopulation"}
-EXPECTED_DISSENTING = {"wikidata", "wikipedia", "worldpopulationreview"}
+EXPECTED_PERCENT = 0
+EXPECTED_AGREEING: set = set()
+EXPECTED_DISSENTING = {
+    "britannica",
+    "citypopulation",
+    "wikidata",
+    "wikipedia",
+    "worldpopulationreview",
+}
 
 
 def manifest() -> dict:
@@ -233,3 +247,46 @@ def test_the_spread_is_wide_enough_to_be_a_real_disagreement():
     values = sorted(classify(n, a).value for n, (a, _) in EXPECTED.items())
     gaps = [(hi - lo) / hi for lo, hi in zip(values, values[1:])]
     assert max(gaps) > 0.05, "no gap exceeds tolerance: {0}".format(gaps)
+
+
+
+def test_no_cluster_here_outnumbers_the_other():
+    """
+    Why this reference case reports nobody as agreeing.
+
+    Two pairs of the same size, and an answer alone. Picking one pair would
+    publish a value and name three dissenters on nothing more substantial
+    than which source was listed first, so the ordering of the input would
+    decide who the record blames.
+    """
+    from contracts.agreement import _values_agree
+
+    ex = [classify(n, a) for n, (a, _) in sorted(EXPECTED.items())]
+    sizes = {}
+    for c in ex:
+        members = frozenset(
+            e.source for e in ex if _values_agree(c.kind, c.value, e.value)
+        )
+        sizes[members] = len(members)
+
+    largest = max(sizes.values())
+    tied = [m for m, n in sizes.items() if n == largest]
+    assert largest == 2
+    assert len(tied) == 2, "the tie is the whole reason nothing is published"
+
+
+def test_reordering_the_sources_cannot_change_the_result():
+    """The property the old code did not have."""
+    import random
+
+    items = list(EXPECTED.items())
+    baseline = assess([classify(n, a) for n, (a, _) in sorted(items)])
+
+    for seed in range(8):
+        shuffled = items[:]
+        random.Random(seed).shuffle(shuffled)
+        got = assess([classify(n, a) for n, (a, _) in shuffled])
+        assert got.verdict == baseline.verdict
+        assert got.consensus_value == baseline.consensus_value
+        assert sorted(got.dissenting) == sorted(baseline.dissenting)
+        assert sorted(got.agreeing) == sorted(baseline.agreeing)

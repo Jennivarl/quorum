@@ -496,16 +496,46 @@ def assess(extracted: list) -> AgreementResult:
     kind = answered[0].kind
 
     # The majority cluster wins. Each answer is scored by how many others
-    # agree with it, rather than trusting the first source to reply, which
-    # would make the verdict depend on source ordering.
-    best = None
-    best_agreeing = []
+    # agree with it, rather than trusting the first source to reply.
+    #
+    # Clusters are collected rather than a single best kept, because two
+    # different clusters can be the same size and picking one of them would
+    # hand the outcome to whoever ordered the sources. Two sources that
+    # contradict each other are exactly that case: taking the first would
+    # name the second as the dissenter and publish the first as the value,
+    # on no evidence beyond list position.
+    best_size = 0
+    clusters = []
     for candidate in answered:
         agreeing = [e for e in answered if _values_agree(kind, candidate.value, e.value)]
-        if best is None or len(agreeing) > len(best_agreeing):
-            best = candidate
-            best_agreeing = agreeing
+        members = frozenset(e.source for e in agreeing)
+        if len(agreeing) > best_size:
+            best_size = len(agreeing)
+            clusters = [(members, candidate, agreeing)]
+        elif len(agreeing) == best_size and all(m != members for m, _, _ in clusters):
+            clusters.append((members, candidate, agreeing))
 
+    if len(clusters) > 1:
+        # No cluster is larger than the others, so no answer is backed by a
+        # majority and naming one side the dissenters would assert something
+        # the sources do not support. Every source that answered is recorded
+        # as dissenting, because each is contradicted by another and none is
+        # corroborated, and no value is published at all.
+        return AgreementResult(
+            verdict="contested",
+            kind=kind,
+            consensus_value="",
+            agreeing=[],
+            dissenting=[e.source for e in answered],
+            abstaining=abstaining,
+        )
+
+    _, _, best_agreeing = clusters[0]
+    # Which member of the cluster is published still matters, because the
+    # members round differently and any of them is a fair representative.
+    # Choosing by source rather than by list position means reordering the
+    # same sources cannot change the stored value.
+    best = sorted(best_agreeing, key=lambda e: e.source)[0]
     dissenting = [e for e in answered if e not in best_agreeing]
 
     if not dissenting:

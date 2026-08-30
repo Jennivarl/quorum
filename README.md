@@ -156,7 +156,20 @@ Abstentions are excluded from the denominator. A source silent on a claim
 is not evidence against it.
 
 The majority cluster is found by scoring every answer against every other,
-so the verdict does not depend on which source happened to be listed first.
+and nothing about the result depends on the order the sources were listed
+in. That is stronger than it sounds. When two clusters are the same size,
+taking either one would publish a value and name the other side as
+dissenters on no evidence beyond list position, so no cluster is treated as
+the majority: no value is published, and every source that answered is
+recorded as dissenting, because each is contradicted by another and none is
+corroborated. Where one cluster genuinely is larger, the answer published
+from it is chosen by source rather than by position, so reordering the same
+sources cannot change the stored value either.
+
+The five archived Lagos sources are exactly the awkward case: they split
+into two pairs, 13.5 to 13.7 million and 14.9 to 15.1 million, with one
+source alone at 19. An earlier version reported the first pair as an
+agreeing majority at 40%, which was an artefact of them sorting first.
 
 ---
 
@@ -218,10 +231,13 @@ retrieval time. They are frozen so the reference check stays reproducible
 for anyone reading this months from now, and the original URLs are there
 to audit against.
 
-The reference check fetches them from `raw.githubusercontent.com` at a
-pinned commit SHA rather than at `main`. A branch URL moves when the
-branch does, which would reintroduce exactly the drift the freezing was
-meant to remove. A commit URL cannot change.
+They are no longer usable as a check between them. Independence is judged
+on the host actually fetched, and every one of them is served from
+`raw.githubusercontent.com`, so a check built out of the archive is
+rejected as coming from a single publisher. They remain in the repository
+as an auditable record of what those five sources said on that date, and
+the check stored on chain reads live third-party APIs on unrelated hosts
+instead.
 
 ---
 

@@ -129,8 +129,16 @@ export default function Method() {
           </p>
           <p>
             The majority cluster is found by scoring every answer against
-            every other, so the verdict does not depend on which source
-            happened to be listed first.
+            every other, and nothing in the result depends on the order the
+            sources were listed in. When two clusters are the same size,
+            taking either would publish a value and name the other side as
+            dissenters on nothing but list position, so neither is treated
+            as the majority: no value is published, and every source that
+            answered is recorded as dissenting, because each is
+            contradicted by another and none is corroborated. Where one
+            cluster genuinely is larger, the answer published from it is
+            picked by source rather than position, so reordering cannot
+            move the stored value either.
           </p>
         </div>
       </section>
