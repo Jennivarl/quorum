@@ -279,6 +279,11 @@ Quorum   nigeria-current     contested      0%   no value published
                              api.worldbank.org   237,527,782   dissenting
                              countriesnow.space  195,874,740   dissenting
 
+Quorum   usd-eur             corroborated 100%   0.86237 euros
+                             api.frankfurter.dev   0.86237
+                             api.vatcomply.com     0.862366
+                             api.fxratesapi.com    0.8609371279
+
 Escrow   nigeria-deal-1      released
                              "corroborated at 100% meets the majority bar"
                              0.01 GEN, depositor -> payee
