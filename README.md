@@ -246,8 +246,8 @@ instead.
 | Contract | Network | Address |
 |---|---|---|
 | `Quorum` | Bradbury | [`0xe6fbd28523d755cb9ca70f5b6370128039b9cee4`](https://explorer-bradbury.genlayer.com/address/0xe6fbd28523d755cb9ca70f5b6370128039b9cee4) |
-| `Escrow` | Bradbury | [`0x96145B643535ae7E84574BC4133ff85D7Acfdf00`](https://explorer-bradbury.genlayer.com/address/0x96145B643535ae7E84574BC4133ff85D7Acfdf00) |
-| `Settle` | Bradbury | [`0x7C14bFBC898327a9D887828D424bC8093b716036`](https://explorer-bradbury.genlayer.com/address/0x7C14bFBC898327a9D887828D424bC8093b716036) |
+| `Escrow` | Bradbury | [`0xEac638aDbe006D72117D25914F4b2E83879323b9`](https://explorer-bradbury.genlayer.com/address/0xEac638aDbe006D72117D25914F4b2E83879323b9) |
+| `Settle` | Bradbury | [`0x3C318D6f70b0AE79A9CcCD7BDECbF076aD2fFF12`](https://explorer-bradbury.genlayer.com/address/0x3C318D6f70b0AE79A9CcCD7BDECbF076aD2fFF12) |
 
 Both directions are exercised on chain against the same contract. The same
 method, called the same way, paid the payee on a corroborated check and
@@ -275,17 +275,17 @@ Quorum   nigeria-2018        corroborated 100%   204,938,755
                              api.worldbank.org   204938755
                              countriesnow.space  195874740
 
-Quorum   nigeria-current     contested     50%   dissent recorded
-                             api.worldbank.org   237,527,782
-                             countriesnow.space  195,874,740   <- dissenting
+Quorum   nigeria-current     contested      0%   no value published
+                             api.worldbank.org   237,527,782   dissenting
+                             countriesnow.space  195,874,740   dissenting
 
 Escrow   nigeria-deal-1      released
                              "corroborated at 100% meets the majority bar"
                              0.01 GEN, depositor -> payee
 
 Escrow   nigeria-refund-1    refunded
-                             "contested at 50%, below the majority bar;
-                              1 source(s) disagreed, so the deposit is
+                             "contested at 0%, below the majority bar;
+                              2 source(s) disagreed, so the deposit is
                               returned rather than paid on a figure in
                               dispute"
                              0.01 GEN, returned to depositor
@@ -293,8 +293,9 @@ Escrow   nigeria-refund-1    refunded
 
 Settle   settle-nigeria-2018 settled
 Settle   settle-nigeria-current  NOT settled
-                             "contested at 50% is below the majority bar;
-                              1 source(s) disagreed"
+                             "contested at 0% is below the majority bar;
+                              2 source(s) disagreed"
+                             naive_value: 237527782
                              naive_would_settle: true
 ```
 
@@ -305,11 +306,17 @@ and every figure had to appear inside the quote it came from.
 The second record is the one worth reading. Asked the same question without
 pinning a year, the World Bank answers with 2025 and countriesnow with 2018,
 forty-two million apart. Both publishers are right about their own figure.
-QUORUM records `contested`, names countriesnow as the dissenter, and settles
-nothing, while `naive_would_settle: true` states plainly that a single-source
-oracle reading the first result would have paid out on 237,527,782. That
-divergence is queryable on chain through `divergences()` rather than asserted
-here.
+
+Neither outnumbers the other, so QUORUM records `contested`, publishes no
+value at all, and marks **both** sources as dissenting. It does not pick a
+winner, because there is nothing in the evidence that would justify picking
+one: the only thing separating them would be which was listed first.
+
+What it does record is the cost of not knowing. `naive_value: 237527782`
+with `naive_would_settle: true` states plainly that a consumer reading a
+single source would have been handed a figure and acted on it. The escrow
+returned the deposit instead. That divergence is queryable on chain through
+`divergences()` rather than asserted here.
 
 The independence rule is also demonstrable rather than merely claimed. A
 check submitted with two sources from the same publisher returned
