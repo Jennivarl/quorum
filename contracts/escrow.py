@@ -53,6 +53,23 @@ STATE_REFUNDED = "refunded"
 STATE_CANCELLED = "cancelled"
 
 
+def _first_answer(record) -> str:
+    """
+    What a single-source consumer would have been handed.
+
+    The counterfactual must not be derived from the consensus value. On a
+    tie QUORUM deliberately publishes nothing, and reading it from there
+    made this report that a naive consumer would have done nothing either
+    - the exact opposite of the truth, and false precisely in the case the
+    field exists to illustrate. Someone reading one source gets that
+    source's figure whether or not the sources agreed.
+    """
+    for a in record["answers"] or []:
+        if str(a["status"]) == "found" and str(a["answer"]).strip():
+            return str(a["answer"]).strip()
+    return ""
+
+
 def _same_claim(a: str, b: str) -> bool:
     """
     Is the deal's question the same question the check answered?
@@ -230,9 +247,12 @@ class Escrow(gl.Contract):
         deal.agreement_percent = percent
         deal.dissenting = len(dissenting)
         deal.reason = reason
-        # A single-source oracle returns a figure and no spread, so any
-        # check that produced a value at all would have been paid out on.
-        deal.naive_would_pay = bool(value)
+        # A single-source oracle returns a figure and no spread, so a
+        # consumer reading one source would have paid out on it. Derived
+        # from the sources' own answers rather than from the consensus
+        # value, which is deliberately empty when no cluster outnumbers
+        # another and would otherwise report that nobody would have acted.
+        deal.naive_would_pay = bool(_first_answer(record))
         self.deals[key] = deal
 
         # State is settled above before any value moves, and the transfer is

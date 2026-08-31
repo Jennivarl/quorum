@@ -245,9 +245,9 @@ instead.
 
 | Contract | Network | Address |
 |---|---|---|
-| `Quorum` | Bradbury | [`0x09c857e5c27290F0Fb7A60259132E19be9Af339e`](https://explorer-bradbury.genlayer.com/address/0x09c857e5c27290F0Fb7A60259132E19be9Af339e) |
-| `Escrow` | Bradbury | [`0x2e666d867eF145847935CD97D01826A10211d75D`](https://explorer-bradbury.genlayer.com/address/0x2e666d867eF145847935CD97D01826A10211d75D) |
-| `Settle` | Bradbury | [`0x58AfABc9D74E8D73818d55Ead7999EA01800CdBF`](https://explorer-bradbury.genlayer.com/address/0x58AfABc9D74E8D73818d55Ead7999EA01800CdBF) |
+| `Quorum` | Bradbury | [`0xe6fbd28523d755cb9ca70f5b6370128039b9cee4`](https://explorer-bradbury.genlayer.com/address/0xe6fbd28523d755cb9ca70f5b6370128039b9cee4) |
+| `Escrow` | Bradbury | [`0x96145B643535ae7E84574BC4133ff85D7Acfdf00`](https://explorer-bradbury.genlayer.com/address/0x96145B643535ae7E84574BC4133ff85D7Acfdf00) |
+| `Settle` | Bradbury | [`0x7C14bFBC898327a9D887828D424bC8093b716036`](https://explorer-bradbury.genlayer.com/address/0x7C14bFBC898327a9D887828D424bC8093b716036) |
 
 Both directions are exercised on chain against the same contract. The same
 method, called the same way, paid the payee on a corroborated check and
@@ -264,7 +264,7 @@ to remove.
 Every view is free to call:
 
 ```bash
-genlayer call 0x09c857e5c27290F0Fb7A60259132E19be9Af339e summaries \
+genlayer call 0xe6fbd28523d755cb9ca70f5b6370128039b9cee4 summaries \
   --rpc https://rpc-bradbury.genlayer.com
 ```
 

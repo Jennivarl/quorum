@@ -110,7 +110,7 @@ class Settle(gl.Contract):
         # The counterfactual. A single-source oracle hands back one figure
         # with no spread, and a consumer holding only that would have acted.
         # Recording it makes the cost of not knowing legible.
-        naive_value = value
+        naive_value = _first_answer(record)
         naive_would_settle = bool(naive_value)
 
         outcome = Settlement(
@@ -178,6 +178,23 @@ class Settle(gl.Contract):
                     }
                 )
         return out
+
+
+def _first_answer(record) -> str:
+    """
+    What a single-source consumer would have been handed.
+
+    The counterfactual must not be derived from the consensus value. On a
+    tie QUORUM deliberately publishes nothing, and reading it from there
+    made this report that a naive consumer would have done nothing either
+    - the exact opposite of the truth, and false precisely in the case the
+    field exists to illustrate. Someone reading one source gets that
+    source's figure whether or not the sources agreed.
+    """
+    for a in record["answers"] or []:
+        if str(a["status"]) == "found" and str(a["answer"]).strip():
+            return str(a["answer"]).strip()
+    return ""
 
 
 def _as_dict(settlement_id: str, s: Settlement) -> dict:

@@ -1,7 +1,7 @@
 {
-  "note": "A real record read back from 0x09c857e5c27290F0Fb7A60259132E19be9Af339e on 2026-08-29. Committed so the site still renders a genuine result when the chain is unreachable. Every field here came from the contract; nothing is added for presentation. The page states on screen whether it is showing chain data or this copy.",
+  "note": "A real record read back from 0xe6fbd28523d755cb9ca70f5b6370128039b9cee4 on 2026-08-29. Committed so the site still renders a genuine result when the chain is unreachable. Every field here came from the contract; nothing is added for presentation. The page states on screen whether it is showing chain data or this copy.",
   "check_id": "nigeria-2018",
-  "contract": "0x09c857e5c27290F0Fb7A60259132E19be9Af339e",
+  "contract": "0xe6fbd28523d755cb9ca70f5b6370128039b9cee4",
   "run_at": "2026-08-29",
   "finalised": true,
   "claim": "What was the population of Nigeria in 2018?",
